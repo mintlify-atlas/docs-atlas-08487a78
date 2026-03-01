@@ -1,0 +1,136 @@
+{
+  "projectType": "saas",
+  "projectName": "JCV Fitness",
+  "projectDescription": "Generador de rutinas de entrenamiento y nutrición personalizadas con sistema de suscripciones",
+  "theme": "aspen",
+  "primaryColor": "#22d3ee",
+  "lightColor": "#3b82f6",
+  "darkColor": "#8b5cf6",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "features"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/workout-wizard",
+              "features/meal-planning",
+              "features/subscription-system",
+              "features/authentication"
+            ]
+          },
+          {
+            "group": "User Guides",
+            "pages": [
+              "guides/creating-plan",
+              "guides/managing-subscription",
+              "guides/downloading-plans",
+              "guides/payment-methods"
+            ]
+          },
+          {
+            "group": "Technical",
+            "pages": [
+              "technical/architecture",
+              "technical/database-schema",
+              "technical/payment-integration",
+              "technical/deployment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api/auth/register",
+              "api/auth/login",
+              "api/auth/logout"
+            ]
+          },
+          {
+            "group": "Subscriptions",
+            "pages": [
+              "api/subscription/status",
+              "api/subscription/create"
+            ]
+          },
+          {
+            "group": "Plans",
+            "pages": [
+              "api/plan/create",
+              "api/plan/access",
+              "api/plan/download"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "api/payment/mercadopago",
+              "api/payment/webhook"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Setup",
+            "pages": [
+              "development/installation",
+              "development/environment-variables",
+              "development/database-setup"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/project-structure",
+              "development/testing",
+              "development/git-workflow"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "9-step interactive workout plan wizard",
+    "Personalized meal and nutrition planning",
+    "Subscription-based access with MercadoPago integration",
+    "Supabase authentication and database",
+    "PDF generation with user watermarks",
+    "Multi-tier pricing plans (Básico, Pro, Premium)",
+    "Exercise library with 100+ exercises",
+    "User dashboard with plan management",
+    "Protected content with row-level security",
+    "Freemium model with 5-week trial plans"
+  ],
+  "publicApiSurface": [
+    "POST /api/auth/register - Create user account",
+    "POST /api/auth/login - User login",
+    "GET /api/subscription/status - Get subscription status",
+    "POST /api/subscription/create - Create new subscription",
+    "GET /api/plan/access - Check plan access permissions",
+    "POST /api/plan/generate-pdf - Generate personalized PDF",
+    "POST /api/payment/mercadopago/create-preference - Create payment preference",
+    "POST /api/payment/mercadopago/webhook - Handle payment webhooks",
+    "useWizardStore - Zustand store for wizard state management",
+    "useAuth - Authentication hook",
+    "WizardProgress - Multi-step wizard component",
+    "PricingSection - Subscription pricing display",
+    "ProtectedRoute - Route protection HOC"
+  ]
+}
