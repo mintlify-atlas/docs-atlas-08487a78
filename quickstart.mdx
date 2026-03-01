@@ -1,80 +1,406 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start Guide
+description: Create your personalized fitness plan in under 10 minutes
 ---
 
-## Get started in three steps
+## Get Started in 10 Minutes
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This guide walks you through creating your first personalized fitness plan with JCV Fitness. You'll create an account, complete the wizard, and access your customized workout and meal plans.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  You can try JCV Fitness with our 5-week trial plans before subscribing. Complete the wizard to see what your personalized program looks like!
 </Note>
+
+## Step 1: Create Your Account
+
+Navigate to the JCV Fitness platform and click **Get Started** or **Sign Up**.
+
+### Registration Options
+
+You have two authentication methods:
+
+<Tabs>
+  <Tab title="Email & Password">
+    1. Enter your email address
+    2. Create a secure password
+    3. Add your full name (optional)
+    4. Click **Sign Up**
+    5. Check your email for verification
+    
+    ```typescript
+    // Authentication uses Supabase
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+    ```
+  </Tab>
+  <Tab title="Magic Link">
+    1. Enter your email address
+    2. Click **Send Magic Link**
+    3. Check your email inbox
+    4. Click the verification link
+    5. You'll be automatically logged in
+    
+    ```typescript
+    // Magic link authentication
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Make sure to verify your email address before proceeding. Check your spam folder if you don't see the verification email within a few minutes.
+</Warning>
+
+## Step 2: Complete the 9-Step Wizard
+
+After logging in, you'll be guided through our interactive wizard at `/wizard`. Each step helps us understand your unique fitness profile.
+
+<Steps>
+  <Step title="Training Level">
+    Select your experience level:
+    - **Principiante** - New to fitness (< 3 months)
+    - **Básico** - Fundamental knowledge (3-6 months)
+    - **Intermedio** - Consistent training (6-18 months)
+    - **Avanzado** - High performance (2+ years)
+    - **Elite** - Competitive level (4+ years)
+    
+    This determines exercise difficulty and progression speed.
+  </Step>
+  
+  <Step title="Training Goal">
+    Choose your primary objective:
+    - 🔥 Quemar Grasa - Reduce body fat percentage
+    - 💪 Ganar Musculo - Increase muscle mass and strength
+    - ✨ Tonificar - Define muscles while maintaining athletic physique
+    - 🏃 Resistencia - Improve cardiovascular capacity
+    - 🧘 Flexibilidad - Increase range of motion
+    - 🏋️ Fuerza Pura - Maximize strength in compound lifts
+    - ⚡ Más Energía - Feel more vitality daily
+    - ❤️ Salud General - Improve overall cardiovascular health
+  </Step>
+  
+  <Step title="Time Availability">
+    How many days per week can you train?
+    - 2-3 days (minimal commitment)
+    - 4-5 days (standard program)
+    - 6-7 days (intensive training)
+    
+    Your program will be optimized for this schedule.
+  </Step>
+  
+  <Step title="Equipment Access">
+    Select what equipment you have available:
+    - **Casa** - Bodyweight, resistance bands, dumbbells
+    - **Gimnasio** - Full gym equipment
+    - **Ambos** - Flexibility to train anywhere
+    
+    This determines which exercises are included in your routine.
+  </Step>
+  
+  <Step title="Workout Duration">
+    How long can each workout session be?
+    - 20-30 minutes (quick sessions)
+    - 45-60 minutes (standard workouts)
+    - 60-90 minutes (extended training)
+  </Step>
+  
+  <Step title="Body Measurements">
+    Enter your current stats:
+    - Age (years)
+    - Weight (kg)
+    - Height (cm)
+    - Target weight (optional)
+    - Body fat percentage (optional)
+    
+    This helps calculate your nutritional needs and track progress.
+  </Step>
+  
+  <Step title="Exercise Preferences">
+    Select exercises you want to avoid or focus on:
+    - Browse 100+ exercises in our library
+    - Mark exercises you can't perform (injuries/limitations)
+    - Star exercises you want to prioritize
+  </Step>
+  
+  <Step title="Food Preferences">
+    Customize your meal plan:
+    - Dietary restrictions (vegetarian, vegan, etc.)
+    - Allergies and intolerances
+    - Foods you dislike
+    - Meal frequency preference
+  </Step>
+  
+  <Step title="Review Summary">
+    Review all your selections before generating your plan:
+    - Verify all information is correct
+    - Make any necessary changes
+    - Click **Generate My Plan** to create your personalized program
+  </Step>
+</Steps>
+
+<Note>
+  Your selections are saved in real-time using Zustand state management, so you can leave and return without losing progress.
+</Note>
+
+## Step 3: Choose Your Subscription
+
+After completing the wizard, you'll see the pricing page with three subscription options:
+
+<CardGroup cols={3}>
+  <Card title="Básico">
+    **$49,900 COP/month**
+    
+    Perfect for getting started:
+    - 7-day meal plan
+    - Home workout routine  
+    - App access
+    - Email support
+  </Card>
+  
+  <Card title="Pro" icon="star">
+    **$89,900 COP/month**
+    
+    Most popular choice:
+    - Personalized meal plan
+    - Gym + home routines
+    - Exercise videos
+    - Priority support
+    - Weekly tracking
+  </Card>
+  
+  <Card title="Premium">
+    **$149,900 COP/month**
+    
+    Maximum results:
+    - Everything in Pro
+    - 1-on-1 coaching
+    - Monthly adjustments
+    - VIP community access
+    - Results guarantee
+  </Card>
+</CardGroup>
+
+### Payment Process
+
+<Steps>
+  <Step title="Select Your Plan">
+    Click **Seleccionar plan** on your preferred subscription tier
+  </Step>
+  
+  <Step title="Review Order">
+    The checkout modal appears showing:
+    - Plan details and pricing
+    - Billing cycle information
+    - Total amount in COP
+  </Step>
+  
+  <Step title="Choose Payment Provider">
+    Select your payment method:
+    - **MercadoPago** - Credit/debit cards, bank transfers
+    - **Wompi** - Coming soon
+    
+    All payments are secured and processed through certified payment gateways.
+  </Step>
+  
+  <Step title="Complete Payment">
+    You'll be redirected to the payment provider:
+    - Enter your payment information
+    - Confirm the transaction
+    - Wait for payment confirmation
+  </Step>
+  
+  <Step title="Payment Confirmation">
+    After successful payment:
+    - You'll be redirected to `/payment/success`
+    - Your subscription is activated immediately
+    - You'll receive a confirmation email
+  </Step>
+</Steps>
+
+<Warning>
+  Webhook processing happens asynchronously via Cloudflare Workers at `mercadopago-jcv.fagal142010.workers.dev`. Your subscription activation may take 1-2 minutes.
+</Warning>
+
+## Step 4: Access Your Dashboard
+
+Navigate to `/dashboard` to view your personalized fitness hub:
+
+### Dashboard Features
+
+<AccordionGroup>
+  <Accordion title="Plan Status Card">
+    View your current fitness plan status:
+    - Plan name and type
+    - Creation date
+    - Progress tracking
+    - Quick access to workout and meal plans
+    
+    ```typescript
+    // Plans are stored in the user_plans table
+    const { data: plan } = await supabase
+      .from('user_plans')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    ```
+  </Accordion>
+  
+  <Accordion title="Subscription Card">
+    Manage your subscription:
+    - Current plan tier (Básico/Pro/Premium)
+    - Renewal date
+    - Payment method
+    - Upgrade/downgrade options
+    
+    Protected by row-level security policies.
+  </Accordion>
+  
+  <Accordion title="Quick Actions">
+    Fast access to common tasks:
+    - **Create New Plan** - Start the wizard again
+    - **Download Plan** - Get PDF with watermark
+    - **View Exercises** - Browse exercise library
+    - **Meal Planning** - Access nutrition plans
+  </Accordion>
+  
+  <Accordion title="Video Tutorials">
+    Watch instructional content:
+    - Exercise form videos
+    - Meal prep tutorials
+    - Platform how-tos
+  </Accordion>
+</AccordionGroup>
+
+## Step 5: View Your Personalized Plans
+
+### Workout Plan
+
+Access your workout routine at `/plan/ejercicios`:
+
+- **Weekly Schedule** - See which days you train and rest
+- **Exercise Details** - Sets, reps, rest periods, and tempo
+- **Progression System** - Gradual increases in volume and intensity
+- **Form Videos** - Watch proper technique for each exercise
+- **Alternative Exercises** - Swap exercises based on equipment/preferences
+
+### Meal Plan
+
+View your nutrition program at `/plan/alimentacion`:
+
+- **Daily Meal Schedule** - Breakfast, lunch, dinner, and snacks
+- **Macronutrient Breakdown** - Protein, carbs, fats, and calories
+- **Food Exchange Tables** - Swap foods while maintaining nutrition balance
+- **Portion Guidance** - Exact measurements for each meal
+- **Shopping Lists** - What to buy each week
+
+<Note>
+  Both plans adapt to your selections from the wizard. Your training level, goals, equipment, and food preferences all influence the final program.
+</Note>
+
+## Step 6: Download Your Plans
+
+You can download PDF versions of your plans for offline access:
+
+<Steps>
+  <Step title="Navigate to Download Page">
+    Go to `/plan/download` from your dashboard or plan pages
+  </Step>
+  
+  <Step title="Select Content">
+    Choose what to include:
+    - Workout plan
+    - Meal plan  
+    - Exercise library
+    - Food exchange tables
+  </Step>
+  
+  <Step title="Generate PDF">
+    Click **Download Plan** to generate your personalized PDF with:
+    - Your name as watermark (prevents unauthorized sharing)
+    - All selected content
+    - Professional formatting
+    - Printer-friendly layout
+  </Step>
+</Steps>
+
+```typescript
+// PDF generation with user watermark
+POST /api/plan/generate-pdf
+
+{
+  "userId": "user-uuid",
+  "planType": "workout",
+  "watermark": true
+}
+```
+
+<Warning>
+  PDFs are personalized with your account watermark. Sharing your login or PDFs violates our terms of service and may result in account suspension.
+</Warning>
+
+## Next Steps
+
+Now that you have your personalized plan:
+
+<CardGroup cols={2}>
+  <Card
+    title="Explore All Features"
+    icon="compass"
+    href="/features"
+  >
+    Learn about workout tracking, meal planning, exercise videos, and more
+  </Card>
+  <Card
+    title="Managing Your Plan"
+    icon="sliders"
+    href="/guides/creating-plan"
+  >
+    Detailed guide on updating preferences and regenerating plans
+  </Card>
+  <Card
+    title="Subscription Management"
+    icon="credit-card"
+    href="/guides/managing-subscription"
+  >
+    How to upgrade, downgrade, or cancel your subscription
+  </Card>
+  <Card
+    title="Get Support"
+    icon="headset"
+    href="https://wa.me/573143826430"
+  >
+    Contact us via WhatsApp for personalized assistance
+  </Card>
+</CardGroup>
+
+## Common Questions
+
+<AccordionGroup>
+  <Accordion title="Can I change my plan after subscribing?">
+    Yes! You can upgrade or downgrade your subscription tier at any time from your dashboard. Changes take effect at your next billing cycle.
+  </Accordion>
+  
+  <Accordion title="What if I need to skip a workout or meal?">
+    Your plan is flexible. You can adjust timing and swap exercises/meals using the substitution features. Premium subscribers can request custom adjustments from their coach.
+  </Accordion>
+  
+  <Accordion title="How often should I regenerate my plan?">
+    We recommend regenerating your plan every 4-6 weeks to account for progress and prevent plateaus. Premium subscribers get monthly adjustments included.
+  </Accordion>
+  
+  <Accordion title="Can I use the app without a subscription?">
+    Yes! The 5-week trial plans are available without a subscription. This lets you test the platform and see sample workouts before committing.
+  </Accordion>
+</AccordionGroup>

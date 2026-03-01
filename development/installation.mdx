@@ -1,0 +1,260 @@
+---
+title: 'Installation & Local Setup'
+description: 'Get JCV Fitness running locally in minutes with this step-by-step installation guide'
+---
+
+## Prerequisites
+
+Before you begin, make sure you have the following installed:
+
+- **Node.js** 20.x or higher
+- **npm**, **yarn**, or **pnpm** package manager
+- **Git** for version control
+- A **Supabase** account (free tier works fine)
+- A **Cloudflare** account (for deployment)
+
+## Clone the Repository
+
+First, clone the JCV Fitness repository:
+
+<CodeGroup>
+```bash npm
+git clone https://github.com/your-org/jcv-fitness.git
+cd jcv-fitness
+```
+
+```bash yarn
+git clone https://github.com/your-org/jcv-fitness.git
+cd jcv-fitness
+```
+
+```bash pnpm
+git clone https://github.com/your-org/jcv-fitness.git
+cd jcv-fitness
+```
+</CodeGroup>
+
+## Install Dependencies
+
+<Steps>
+  <Step title="Install packages">
+    Install all required dependencies:
+
+    <CodeGroup>
+    ```bash npm
+    npm install
+    ```
+
+    ```bash yarn
+    yarn install
+    ```
+
+    ```bash pnpm
+    pnpm install
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Configure environment variables">
+    Copy the example environment file and configure your variables:
+
+    ```bash
+    cp .env.example .env.local
+    ```
+
+    See [Environment Variables](/development/environment-variables) for detailed configuration.
+  </Step>
+
+  <Step title="Set up database">
+    Run the Supabase migrations to set up your database schema:
+
+    See [Database Setup](/development/database-setup) for complete instructions.
+  </Step>
+</Steps>
+
+## Development Server
+
+Start the Next.js development server:
+
+<CodeGroup>
+```bash npm
+npm run dev
+```
+
+```bash yarn
+yarn dev
+```
+
+```bash pnpm
+pnpm dev
+```
+</CodeGroup>
+
+The application will be available at [http://localhost:3000](http://localhost:3000)
+
+## Available Scripts
+
+Here are all the available npm scripts:
+
+| Script | Command | Description |
+|--------|---------|-------------|
+| **Development** | `npm run dev` | Start Next.js development server |
+| **Build** | `npm run build` | Build production-ready static export |
+| **Start** | `npm run start` | Start production server (after build) |
+| **Lint** | `npm run lint` | Run ESLint to check code quality |
+| **Test** | `npm test` | Run Vitest tests in watch mode |
+| **Test (CI)** | `npm run test:run` | Run tests once (for CI/CD) |
+| **Video Studio** | `npm run video:dev` | Open Remotion Studio for video editing |
+| **Video Build** | `npm run video:build` | Render horizontal promo video |
+| **Video Vertical** | `npm run video:build:vertical` | Render vertical promo video |
+| **Video Still** | `npm run video:still` | Render single frame from video |
+
+## Tech Stack Overview
+
+JCV Fitness is built with:
+
+- **Frontend**: Next.js 16, React 19, TypeScript
+- **Styling**: Tailwind CSS 4
+- **State Management**: Zustand 5
+- **Authentication**: Supabase Auth (magic links)
+- **Database**: Supabase PostgreSQL with RLS
+- **Payments**: MercadoPago (primary), Wompi (future)
+- **Hosting**: Cloudflare Pages (static export)
+- **Workers**: Cloudflare Workers (webhook handling)
+- **Video**: Remotion for promotional content
+- **Validation**: Zod for type-safe schemas
+- **Testing**: Vitest + Testing Library
+
+## Project Structure
+
+```
+jcv-fitness/
+├── src/
+│   ├── app/                    # Next.js 16 app directory
+│   ├── features/               # Feature-based modules
+│   │   ├── auth/              # Authentication (magic link)
+│   │   ├── dashboard/         # User dashboard
+│   │   ├── meal-plan/         # Meal plan display
+│   │   ├── payment/           # MercadoPago/Wompi integration
+│   │   ├── plans/             # Plan viewer, tracking
+│   │   ├── subscription/      # Subscription management
+│   │   ├── wizard/            # 9-step plan generator
+│   │   └── workout-plan/      # Workout plan display
+│   ├── components/            # Shared UI components
+│   ├── lib/                   # Utilities and helpers
+│   └── remotion/              # Video rendering config
+├── supabase/
+│   └── migrations/            # Database migrations
+├── cloudflare-worker/         # Webhook worker
+├── docs/                      # Project documentation
+├── openspec/                  # Feature specifications
+└── public/                    # Static assets
+```
+
+## Verify Installation
+
+<Steps>
+  <Step title="Run the build">
+    Ensure everything compiles correctly:
+
+    <CodeGroup>
+    ```bash npm
+    npm run build
+    ```
+
+    ```bash yarn
+    yarn build
+    ```
+
+    ```bash pnpm
+    pnpm build
+    ```
+    </CodeGroup>
+
+    You should see a successful static export to the `out/` directory.
+  </Step>
+
+  <Step title="Run tests">
+    Verify all tests pass:
+
+    <CodeGroup>
+    ```bash npm
+    npm run test:run
+    ```
+
+    ```bash yarn
+    yarn test:run
+    ```
+
+    ```bash pnpm
+    pnpm test:run
+    ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Environment Variables" icon="gear" href="/development/environment-variables">
+    Configure your Supabase, MercadoPago, and other environment variables
+  </Card>
+  <Card title="Database Setup" icon="database" href="/development/database-setup">
+    Set up your Supabase database with migrations and RLS policies
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Port 3000 already in use
+
+If port 3000 is already in use, you can specify a different port:
+
+```bash
+PORT=3001 npm run dev
+```
+
+### Module not found errors
+
+Delete `node_modules` and reinstall:
+
+<CodeGroup>
+```bash npm
+rm -rf node_modules package-lock.json
+npm install
+```
+
+```bash yarn
+rm -rf node_modules yarn.lock
+yarn install
+```
+
+```bash pnpm
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
+```
+</CodeGroup>
+
+### TypeScript errors
+
+Ensure you're using TypeScript 5.x:
+
+```bash
+npx tsc --version
+```
+
+If needed, reinstall TypeScript:
+
+<CodeGroup>
+```bash npm
+npm install -D typescript@latest
+```
+
+```bash yarn
+yarn add -D typescript@latest
+```
+
+```bash pnpm
+pnpm add -D typescript@latest
+```
+</CodeGroup>

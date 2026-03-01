@@ -1,0 +1,522 @@
+---
+title: "Workout Wizard"
+description: "Complete guide to the 9-step workout and meal plan wizard that powers JCV Fitness personalization"
+---
+
+# Workout Wizard
+
+The Workout Wizard is a comprehensive 9-step questionnaire that collects user preferences and generates personalized workout and meal plans. Built with Zustand for state management and persisted to localStorage.
+
+## Overview
+
+The wizard guides users through a progressive series of steps to build a complete fitness profile:
+
+<Steps>
+  <Step title="Training Level">
+    User selects their experience level (Principiante to Elite)
+  </Step>
+  <Step title="Training Goal">
+    User defines their primary fitness objective
+  </Step>
+  <Step title="Available Time">
+    User sets how many minutes per day they can train
+  </Step>
+  <Step title="Equipment">
+    User selects what equipment they have access to
+  </Step>
+  <Step title="Program Duration">
+    User chooses how long they want the program (1 day to 3 months)
+  </Step>
+  <Step title="Body Data">
+    User provides physical metrics for calorie calculation
+  </Step>
+  <Step title="Exercise Selection">
+    User browses and selects preferred exercises
+  </Step>
+  <Step title="Food Preferences">
+    User selects foods they like for meal planning
+  </Step>
+  <Step title="Summary & Generation">
+    Review all selections and generate the personalized plan
+  </Step>
+</Steps>
+
+## Architecture
+
+### Wizard Store (State Management)
+
+The wizard uses Zustand with persistence middleware to maintain state across page refreshes.
+
+```typescript
+// src/features/wizard/store/wizard-store.ts
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+
+interface WizardState {
+  currentStep: number;
+  level: TrainingLevel | null;
+  goal: TrainingGoal | null;
+  time: number;
+  equipment: EquipmentType[];
+  duration: ProgramDuration | null;
+  selectedExercises: string[];
+  selectedFoods: string[];
+  userName: string;
+  userBodyData: UserBodyData | null;
+}
+
+export const useWizardStore = create<WizardState & WizardActions>()(persist(
+  (set, get) => ({
+    // State initialization
+    currentStep: 1,
+    level: null,
+    goal: null,
+    time: 30,
+    equipment: [],
+    duration: null,
+    selectedExercises: [],
+    selectedFoods: [],
+    userName: "",
+    userBodyData: null,
+
+    // Actions
+    setLevel: (level) => set({ level }),
+    setGoal: (goal) => set({ goal }),
+    nextStep: () => set((state) => ({ 
+      currentStep: Math.min(state.currentStep + 1, 9) 
+    })),
+    prevStep: () => set((state) => ({ 
+      currentStep: Math.max(state.currentStep - 1, 1) 
+    })),
+    // ... more actions
+  }),
+  {
+    name: "jcv-wizard-state",
+    partialize: (state) => ({ /* persist specific fields */ })
+  }
+));
+```
+
+### Key Types
+
+<CodeGroup>
+
+```typescript Training Levels
+export type TrainingLevel =
+  | "principiante"   // Beginner - <3 months
+  | "basico"         // Basic - 3-6 months
+  | "intermedio"     // Intermediate - 6-18 months
+  | "avanzado"       // Advanced - 2+ years
+  | "elite";         // Elite - 4+ years competitive
+```
+
+```typescript Training Goals
+export type TrainingGoal =
+  | "perder_grasa"   // Fat loss
+  | "ganar_musculo"  // Muscle gain
+  | "tonificar"      // Toning
+  | "resistencia"    // Endurance
+  | "flexibilidad"   // Flexibility
+  | "fuerza"         // Pure strength
+  | "energia"        // More energy
+  | "salud";         // General health
+```
+
+```typescript Equipment Types
+export type EquipmentType =
+  | "sin_equipo"     // No equipment
+  | "gym_completo"   // Full gym
+  | "mancuernas"     // Dumbbells
+  | "bandas"         // Resistance bands
+  | "barra"          // Barbell
+  | "banco"          // Bench
+  | "pull_up_bar"    // Pull-up bar
+  | "kettlebell"     // Kettlebell
+  // ... more equipment types
+```
+
+```typescript Program Durations
+export type ProgramDuration =
+  | "1_dia"      // 1 day
+  | "3_dias"     // 3 days
+  | "1_semana"   // 1 week
+  | "2_semanas"  // 2 weeks
+  | "1_mes"      // 1 month
+  | "6_semanas"  // 6 weeks
+  | "2_meses"    // 2 months
+  | "3_meses";   // 3 months
+```
+
+</CodeGroup>
+
+### User Body Data
+
+Step 6 collects physical metrics for calorie calculations using the Harris-Benedict formula:
+
+```typescript
+export interface UserBodyData {
+  currentWeight: number;      // kg
+  targetWeight: number;       // kg
+  height: number;             // cm
+  age: number;                // years
+  gender: "masculino" | "femenino";
+  activityLevel: ActivityLevel;
+  weightGoal: WeightGoal;
+}
+
+export type ActivityLevel = 
+  | "sedentario"   // Sedentary - office work
+  | "ligero"       // Light - 1-2x/week
+  | "moderado"     // Moderate - 3-4x/week
+  | "activo"       // Active - 5-6x/week
+  | "muy_activo";  // Very active - athlete
+
+export type WeightGoal = 
+  | "perder"      // Lose weight (-500 cal)
+  | "mantener"    // Maintain weight
+  | "ganar";      // Gain muscle (+300 cal)
+```
+
+### Calorie Calculation
+
+The wizard calculates BMR (Basal Metabolic Rate), TDEE (Total Daily Energy Expenditure), and target calories:
+
+```typescript
+calculateCalories: () => {
+  const { userBodyData } = get();
+  if (!userBodyData) return null;
+
+  const { currentWeight, height, age, gender, activityLevel, weightGoal } = userBodyData;
+
+  // Harris-Benedict BMR formula
+  let bmr: number;
+  if (gender === "masculino") {
+    bmr = 66.5 + (13.75 * currentWeight) + (5.003 * height) - (6.755 * age);
+  } else {
+    bmr = 655.1 + (9.563 * currentWeight) + (1.850 * height) - (4.676 * age);
+  }
+
+  // Apply activity multiplier
+  const ACTIVITY_MULTIPLIERS = {
+    sedentario: 1.2,
+    ligero: 1.375,
+    moderado: 1.55,
+    activo: 1.725,
+    muy_activo: 1.9,
+  };
+  const tdee = bmr * ACTIVITY_MULTIPLIERS[activityLevel];
+
+  // Calculate target based on goal
+  let target: number;
+  switch (weightGoal) {
+    case "perder":
+      target = tdee - 500;  // 500 cal deficit
+      break;
+    case "ganar":
+      target = tdee + 300;  // 300 cal surplus
+      break;
+    default:
+      target = tdee;
+  }
+
+  return {
+    bmr: Math.round(bmr),
+    tdee: Math.round(tdee),
+    target: Math.round(target),
+  };
+}
+```
+
+## Step Components
+
+### Step 1: Training Level
+
+```tsx
+// src/features/wizard/components/StepLevel.tsx
+const LEVEL_OPTIONS: LevelOption[] = [
+  {
+    value: "principiante",
+    label: "Principiante",
+    subtitle: "Nuevo en el fitness",
+    description: "Menos de 3 meses entrenando o retomando después de mucho tiempo",
+    color: "green",
+  },
+  {
+    value: "basico",
+    label: "Básico",
+    subtitle: "Conocimientos fundamentales",
+    description: "3-6 meses de experiencia, conoces ejercicios básicos",
+    color: "blue",
+  },
+  // ... more levels
+];
+
+export function StepLevel() {
+  const { level, setLevel, nextStep, canProceed } = useWizardStore();
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+          ¿Cuál es tu nivel de entrenamiento?
+        </h2>
+        <p className="text-gray-400">
+          Selecciona el nivel que mejor describe tu experiencia actual
+        </p>
+      </div>
+
+      <div className="grid gap-4">
+        {LEVEL_OPTIONS.map((option) => (
+          <OptionCard
+            key={option.value}
+            title={option.label}
+            subtitle={option.subtitle}
+            description={option.description}
+            isSelected={level === option.value}
+            onClick={() => setLevel(option.value)}
+            color={option.color}
+          />
+        ))}
+      </div>
+
+      <NavigationButtons
+        onNext={nextStep}
+        canProceed={canProceed()}
+        isFirstStep
+      />
+    </div>
+  );
+}
+```
+
+### Step 2: Training Goal
+
+```tsx
+const GOAL_OPTIONS: GoalOption[] = [
+  {
+    value: "perder_grasa",
+    label: "Quemar Grasa",
+    emoji: "🔥",
+    description: "Reducir porcentaje de grasa corporal y definir musculos",
+    color: "red",
+  },
+  {
+    value: "ganar_musculo",
+    label: "Ganar Musculo",
+    emoji: "💪",
+    description: "Aumentar masa muscular y fuerza de forma progresiva",
+    color: "blue",
+  },
+  // ... 6 more goals
+];
+```
+
+### Step 6: Body Data with Calorie Display
+
+```tsx
+export function StepBodyData() {
+  const { 
+    userBodyData, 
+    updateBodyDataField, 
+    calculateCalories 
+  } = useWizardStore();
+
+  const calories = calculateCalories();
+
+  return (
+    <div className="space-y-6">
+      {/* Input fields for age, height, weight, etc */}
+      
+      {/* Calorie estimation display */}
+      {calories && calories.bmr > 0 && (
+        <div className="bg-gradient-to-r from-accent-cyan/10 to-accent-blue/10 rounded-xl p-6">
+          <h3 className="text-lg font-bold text-white mb-4 text-center">
+            Tu estimación de calorías diarias
+          </h3>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold text-gray-400">{calories.bmr}</div>
+              <div className="text-xs text-gray-500">Metabolismo Basal (GEB)</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-white">{calories.tdee}</div>
+              <div className="text-xs text-gray-400">Mantenimiento</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-accent-cyan">{calories.target}</div>
+              <div className="text-xs text-accent-cyan">Calorías Objetivo</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## Validation & Navigation
+
+The wizard includes validation logic to ensure users can only proceed when required data is provided:
+
+```typescript
+canProceed: () => {
+  const state = get();
+  switch (state.currentStep) {
+    case 1:
+      return state.level !== null;
+    case 2:
+      return state.goal !== null;
+    case 3:
+      return state.time > 0;
+    case 4:
+      return state.equipment.length > 0;
+    case 5:
+      return state.duration !== null;
+    case 6:
+      return state.userBodyData !== null &&
+             state.userBodyData.currentWeight > 0 &&
+             state.userBodyData.height > 0 &&
+             state.userBodyData.age > 0;
+    case 7:
+      return true; // Exercise selection is optional
+    case 8:
+      return true; // Food selection is optional
+    case 9:
+      return true; // Summary step
+    default:
+      return false;
+  }
+}
+```
+
+## Container Component
+
+The wizard container manages step rendering and progress display:
+
+```tsx
+// src/features/wizard/components/WizardContainer.tsx
+const TOTAL_STEPS = 9;
+
+export function WizardContainer() {
+  const { currentStep } = useWizardStore();
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1: return <StepLevel />;
+      case 2: return <StepGoal />;
+      case 3: return <StepTime />;
+      case 4: return <StepEquipment />;
+      case 5: return <StepDuration />;
+      case 6: return <StepBodyData />;
+      case 7: return <StepExercises />;
+      case 8: return <StepFoods />;
+      case 9: return <StepSummary />;
+      default: return <StepLevel />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+        <WizardProgress currentStep={currentStep} totalSteps={TOTAL_STEPS} />
+        <div className="mt-8 bg-gray-950/50 rounded-2xl border border-gray-800 p-6 md:p-8">
+          {renderStep()}
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+## Data Persistence
+
+All wizard state is automatically persisted to localStorage using Zustand's persist middleware:
+
+```typescript
+persist(
+  (set, get) => ({ /* store implementation */ }),
+  {
+    name: "jcv-wizard-state",
+    partialize: (state) => ({
+      currentStep: state.currentStep,
+      level: state.level,
+      goal: state.goal,
+      time: state.time,
+      equipment: state.equipment,
+      duration: state.duration,
+      selectedExercises: state.selectedExercises,
+      selectedFoods: state.selectedFoods,
+      userName: state.userName,
+      userBodyData: state.userBodyData,
+    }),
+  }
+)
+```
+
+## Usage Example
+
+```tsx
+import { useWizardStore } from '@/features/wizard';
+
+function MyComponent() {
+  const {
+    currentStep,
+    level,
+    goal,
+    setLevel,
+    nextStep,
+    prevStep,
+    reset,
+    canProceed,
+  } = useWizardStore();
+
+  return (
+    <div>
+      <p>Current Step: {currentStep}/9</p>
+      <p>Level: {level}</p>
+      <p>Goal: {goal}</p>
+      
+      <button onClick={nextStep} disabled={!canProceed()}>
+        Next Step
+      </button>
+      <button onClick={prevStep} disabled={currentStep === 1}>
+        Previous Step
+      </button>
+      <button onClick={reset}>Reset Wizard</button>
+    </div>
+  );
+}
+```
+
+## Testing
+
+The wizard includes comprehensive unit tests:
+
+```typescript
+// src/features/wizard/__tests__/wizard-store.test.ts
+import { renderHook, act } from '@testing-library/react';
+import { useWizardStore } from '../store/wizard-store';
+
+describe('WizardStore', () => {
+  it('should initialize with default values', () => {
+    const { result } = renderHook(() => useWizardStore());
+    expect(result.current.currentStep).toBe(1);
+    expect(result.current.level).toBeNull();
+  });
+
+  it('should navigate steps correctly', () => {
+    const { result } = renderHook(() => useWizardStore());
+    act(() => {
+      result.current.setLevel('basico');
+      result.current.nextStep();
+    });
+    expect(result.current.currentStep).toBe(2);
+  });
+});
+```
+
+## See Also
+
+- [Meal Planning](/features/meal-planning) - How meal plans are generated from wizard data
+- [Subscription System](/features/subscription-system) - How wizard data is saved to Supabase
+- [Authentication](/features/authentication) - User authentication before using the wizard

@@ -1,0 +1,254 @@
+---
+title: 'Environment Variables'
+description: 'Complete reference for all environment variables required to run JCV Fitness'
+---
+
+## Overview
+
+JCV Fitness uses environment variables to configure connections to Supabase, payment providers, and deployment platforms. All environment variables should be stored in `.env.local` for local development.
+
+<Warning>
+Never commit `.env.local` or any file containing secrets to version control. These files are already in `.gitignore`.
+</Warning>
+
+## Environment File Setup
+
+Create a `.env.local` file in the root of your project:
+
+```bash
+touch .env.local
+```
+
+## Required Variables
+
+### Supabase Configuration
+
+These variables are required for authentication, database access, and storage.
+
+```env .env.local
+# Supabase - Get these from https://app.supabase.com/project/_/settings/api
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Service Role Key (server-side only, never expose to client)
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+<Steps>
+  <Step title="Get Supabase URL">
+    1. Go to [Supabase Dashboard](https://app.supabase.com)
+    2. Select your project
+    3. Navigate to **Settings** → **API**
+    4. Copy the **Project URL** as `NEXT_PUBLIC_SUPABASE_URL`
+  </Step>
+
+  <Step title="Get Anonymous Key">
+    From the same API settings page:
+    - Copy the **anon public** key as `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  </Step>
+
+  <Step title="Get Service Role Key">
+    <Warning>
+    The Service Role Key bypasses Row Level Security. Never expose it to the client or commit it to version control.
+    </Warning>
+
+    From the API settings page:
+    - Copy the **service_role** key as `SUPABASE_SERVICE_ROLE_KEY`
+  </Step>
+</Steps>
+
+### MercadoPago Configuration
+
+Required for payment processing (primary payment provider).
+
+```env .env.local
+# MercadoPago - Get from https://www.mercadopago.com/developers/panel
+NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY=APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+MERCADOPAGO_ACCESS_TOKEN=APP_USR-xxxxxxxxxxxx-xxxxxx-xxxxxxxxxxxx
+```
+
+<Steps>
+  <Step title="Create MercadoPago Application">
+    1. Go to [MercadoPago Developer Panel](https://www.mercadopago.com/developers/panel)
+    2. Create a new application or select existing one
+    3. Copy your **Public Key** (for client-side)
+    4. Copy your **Access Token** (for server-side)
+  </Step>
+
+  <Step title="Test vs Production">
+    MercadoPago provides different keys for testing and production:
+
+    - **Test keys**: Start with `TEST-`
+    - **Production keys**: Start with `APP_USR-`
+
+    Use test keys during development.
+  </Step>
+</Steps>
+
+## Optional Variables
+
+### Wompi Configuration
+
+Future payment provider integration (currently not active).
+
+```env .env.local
+# Wompi (Future)
+NEXT_PUBLIC_WOMPI_PUBLIC_KEY=pub_test_xxxxx
+WOMPI_PRIVATE_KEY=prv_test_xxxxx
+```
+
+### Email Service (Resend)
+
+For sending subscription reminder emails.
+
+```env .env.local
+# Resend - Get from https://resend.com/api-keys
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxx
+```
+
+<Accordion title="How to get a Resend API key">
+  1. Sign up at [Resend](https://resend.com)
+  2. Navigate to **API Keys** in the dashboard
+  3. Create a new API key
+  4. Copy and paste it as `RESEND_API_KEY`
+</Accordion>
+
+### Cloudflare Configuration
+
+For deploying the webhook worker and hosting on Cloudflare Pages.
+
+```env .env.local
+# Cloudflare (for deployment)
+CLOUDFLARE_API_TOKEN=your-api-token
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+```
+
+## Environment Variable Prefixes
+
+<Info>
+Next.js requires the `NEXT_PUBLIC_` prefix for any variable that should be accessible in the browser.
+</Info>
+
+| Prefix | Access | Use Case |
+|--------|--------|----------|
+| `NEXT_PUBLIC_` | Client + Server | Public configuration (API URLs, public keys) |
+| No prefix | Server only | Secrets (service keys, tokens, private keys) |
+
+## Example Configuration
+
+Here's a complete example `.env.local` file:
+
+```env .env.local
+# ===========================================
+# JCV FITNESS - ENVIRONMENT VARIABLES
+# ===========================================
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://chqgylghpuzcqzkbuhsk.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocWd5bGdocHV6Y3F6a2J1aHNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODk3Mjc0OTAsImV4cCI6MjAwNTMwMzQ5MH0.example-key
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example-service-role-key
+
+# MercadoPago (Test Mode)
+NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY=TEST-xxxx-xxxx-xxxx-xxxx
+MERCADOPAGO_ACCESS_TOKEN=TEST-xxxx-xxxx-xxxx-xxxx
+
+# Optional: Email Service
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxx
+
+# Optional: Cloudflare
+CLOUDFLARE_API_TOKEN=your-token
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+```
+
+## Validation
+
+You can verify your environment variables are loaded correctly:
+
+```typescript
+// Check in any component or API route
+console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+console.log('Has Service Key:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
+```
+
+<Warning>
+Never log sensitive keys like `SUPABASE_SERVICE_ROLE_KEY` or `MERCADOPAGO_ACCESS_TOKEN` in production.
+</Warning>
+
+## Deployment Environments
+
+### Cloudflare Pages
+
+When deploying to Cloudflare Pages, set these environment variables in the dashboard:
+
+<Steps>
+  <Step title="Navigate to Environment Variables">
+    1. Go to your Cloudflare Pages project
+    2. Click **Settings** → **Environment variables**
+  </Step>
+
+  <Step title="Add variables for each environment">
+    Add all `NEXT_PUBLIC_*` variables for:
+    - **Production** (main branch)
+    - **Preview** (staging branch)
+  </Step>
+</Steps>
+
+### Cloudflare Workers
+
+For the MercadoPago webhook worker, set secrets using Wrangler:
+
+```bash
+cd cloudflare-worker
+wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+wrangler secret put MERCADOPAGO_ACCESS_TOKEN
+```
+
+## Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Rotate keys regularly">
+    - Change Supabase service role keys every 90 days
+    - Update MercadoPago tokens if compromised
+    - Use different keys for staging and production
+  </Accordion>
+
+  <Accordion title="Never commit secrets">
+    - Always use `.env.local` (already in `.gitignore`)
+    - Never hardcode keys in source files
+    - Use environment variables for all sensitive data
+  </Accordion>
+
+  <Accordion title="Limit key permissions">
+    - Use anonymous keys for client-side Supabase access
+    - Use service role keys only in server-side code
+    - Enable Row Level Security (RLS) on all tables
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+### Environment variables not loading
+
+1. Ensure your `.env.local` file is in the project root
+2. Restart the Next.js dev server after changing `.env.local`
+3. Check for typos in variable names
+4. Verify no trailing spaces or quotes
+
+### CORS errors from Supabase
+
+1. Verify your Supabase URL is correct
+2. Check that your site URL is added to Supabase's allowed URLs:
+   - Go to **Authentication** → **URL Configuration**
+   - Add `http://localhost:3000` for development
+
+### Payment integration not working
+
+1. Ensure you're using the correct environment (test vs production)
+2. Verify MercadoPago keys match your account region
+3. Check webhook URL is configured in MercadoPago dashboard
+
+## Next Steps
+
+<Card title="Database Setup" icon="database" href="/development/database-setup">
+  Now that your environment is configured, set up your Supabase database with migrations
+</Card>

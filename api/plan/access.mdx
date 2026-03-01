@@ -1,0 +1,288 @@
+---
+title: "Check Plan Access"
+description: "Check if a user can create a new plan and get their active plan status"
+---
+
+## Overview
+
+This endpoint checks whether a user can create a new fitness plan based on their subscription status and plan history. It also retrieves the user's currently active plan if one exists.
+
+## Authentication
+
+Requires authenticated user via Supabase Auth. Uses Row Level Security (RLS) policies.
+
+## Endpoints
+
+### Can Create Plan
+
+```
+RPC: can_create_plan(user_uuid)
+```
+
+Checks if user is eligible to create a new plan.
+
+### Get Active Plan
+
+```
+RPC: get_active_plan(user_uuid)
+```
+
+Retrieves the user's currently active plan with expiration info.
+
+## Can Create Plan
+
+### Request Parameters
+
+<ParamField path="user_uuid" type="UUID" required>
+  The authenticated user's UUID from Supabase Auth
+</ParamField>
+
+### Response
+
+<ResponseField name="can_create" type="boolean">
+  Whether the user can create a new plan
+</ResponseField>
+
+<ResponseField name="reason" type="string | null">
+  Reason if user cannot create a plan:
+  - `"already_has_plan"` - User already has an active plan
+  - `"free_used"` - User has already used their free plan
+  - `null` - User can create a plan
+</ResponseField>
+
+### Logic Flow
+
+The function checks in this order:
+
+1. **Has active subscription?** 
+   - If YES → Return `can_create: true`
+   - Paid users can always create new plans (deactivates previous)
+
+2. **Has active plan?**
+   - If YES → Return `can_create: false, reason: "already_has_plan"`
+   - Free users can only have one plan at a time
+
+3. **Already used free plan?**
+   - Checks `profiles.has_free_plan_used` flag
+   - If YES → Return `can_create: false, reason: "free_used"`
+
+4. **Otherwise**
+   - Return `can_create: true`
+   - User can create their first free plan
+
+### Example Usage
+
+```typescript
+import { planService } from "@/features/plans/services/plan-service";
+
+const result = await planService.canCreatePlan(userId);
+
+if (result.canCreate) {
+  // Show wizard
+  console.log("User can create a plan!");
+} else {
+  // Show appropriate message
+  switch (result.reason) {
+    case "already_has_plan":
+      console.log("Ya tienes un plan activo");
+      break;
+    case "free_used":
+      console.log("Actualiza a premium para crear más planes");
+      break;
+    case "not_authenticated":
+      console.log("Debes iniciar sesión");
+      break;
+  }
+}
+```
+
+## Get Active Plan
+
+### Request Parameters
+
+<ParamField path="user_uuid" type="UUID" required>
+  The authenticated user's UUID from Supabase Auth
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="UUID">
+  Plan ID
+</ResponseField>
+
+<ResponseField name="plan_data" type="JSONB">
+  The complete WizardState object with optional progress tracking
+</ResponseField>
+
+<ResponseField name="plan_type" type="string">
+  `"free"` or `"paid"`
+</ResponseField>
+
+<ResponseField name="created_at" type="timestamp">
+  When the plan was created
+</ResponseField>
+
+<ResponseField name="expires_at" type="timestamp">
+  When the plan expires (5 weeks for free, 1 year for paid)
+</ResponseField>
+
+<ResponseField name="is_expired" type="boolean">
+  Whether the plan has expired (computed field)
+</ResponseField>
+
+<ResponseField name="days_remaining" type="integer">
+  Days until expiration (computed field, minimum 0)
+</ResponseField>
+
+<ResponseField name="download_count" type="integer">
+  Number of times the plan PDF has been downloaded (only increments for paid plans)
+</ResponseField>
+
+### Plan Data with Progress
+
+The `plan_data` field contains the original WizardState plus optional progress tracking:
+
+```typescript
+interface PlanDataWithProgress extends WizardState {
+  progress?: {
+    totalWeeks: number;
+    currentWeek: number;
+    weeks: WeekProgress[];
+    stats: {
+      totalWorkoutsCompleted: number;
+      totalWorkoutsPlanned: number;
+      currentStreak: number;
+      longestStreak: number;
+      completionRate: number;
+    };
+  };
+}
+```
+
+### Example Usage
+
+```typescript
+import { planService } from "@/features/plans/services/plan-service";
+
+const result = await planService.getActivePlan(userId);
+
+if (result.plan) {
+  console.log(`Plan type: ${result.plan.planType}`);
+  console.log(`Days remaining: ${result.plan.daysRemaining}`);
+  console.log(`Expired: ${result.plan.isExpired}`);
+  
+  // Access plan configuration
+  const { level, goal, duration } = result.plan.planData;
+  console.log(`${level} plan for ${goal} - ${duration}`);
+  
+  // Check progress if available
+  if (result.plan.planData.progress) {
+    const { completionRate } = result.plan.planData.progress.stats;
+    console.log(`Completion: ${completionRate}%`);
+  }
+} else {
+  console.log("No active plan");
+}
+```
+
+## React Hook Example
+
+```typescript
+import { usePlan } from "@/features/plans/hooks/usePlan";
+
+function MyComponent() {
+  const { plan, canCreatePlan, canCreateReason, isLoading } = usePlan();
+  
+  if (isLoading) return <div>Loading...</div>;
+  
+  if (!plan && canCreatePlan) {
+    return <CreatePlanButton />;
+  }
+  
+  if (!plan && !canCreatePlan) {
+    return (
+      <div>
+        {canCreateReason === "already_has_plan" && "Ya tienes un plan activo"}
+        {canCreateReason === "free_used" && "Actualiza a premium"}
+      </div>
+    );
+  }
+  
+  return (
+    <div>
+      <h2>Tu Plan Activo</h2>
+      <p>Vence en {plan.daysRemaining} días</p>
+      {plan.isExpired && <ExpiredOverlay />}
+    </div>
+  );
+}
+```
+
+## Expiration Handling
+
+### Free Plans
+
+- Duration: **5 weeks** from creation
+- After expiration:
+  - Plan remains in database with `is_active: false`
+  - User CANNOT create another free plan
+  - Must upgrade to paid subscription
+
+### Paid Plans
+
+- Duration: **1 year** from creation
+- After expiration:
+  - Plan remains in database with `is_active: false`
+  - User CAN create a new paid plan (if subscription is still active)
+  - Previous plan is automatically deactivated
+
+### Auto-Expiration
+
+The `expire_old_plans()` function can be called to deactivate expired plans:
+
+```typescript
+import { planService } from "@/features/plans/services/plan-service";
+
+const expiredCount = await planService.expireOldPlans();
+console.log(`Expired ${expiredCount} plans`);
+```
+
+This should be run via cron job or on-demand.
+
+## Database Schema
+
+### user_plans Table
+
+```sql
+CREATE TABLE user_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  plan_data JSONB NOT NULL,
+  plan_type TEXT NOT NULL DEFAULT 'free' CHECK (plan_type IN ('free', 'paid')),
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  download_count INTEGER DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+-- Only one active plan per user
+CREATE UNIQUE INDEX idx_user_plans_active_user
+  ON user_plans(user_id)
+  WHERE is_active = TRUE;
+```
+
+### profiles Table (Freemium Fields)
+
+```sql
+ALTER TABLE profiles
+  ADD COLUMN has_free_plan_used BOOLEAN DEFAULT FALSE,
+  ADD COLUMN free_plan_expires_at TIMESTAMPTZ,
+  ADD COLUMN active_plan_id UUID REFERENCES user_plans(id);
+```
+
+## Related
+
+- [Create Plan](/api/plan/create) - Create a new plan
+- [Download Plan](/api/plan/download) - Generate and download plan PDF
+- [Subscription Status](/api/subscription/status) - Check subscription status

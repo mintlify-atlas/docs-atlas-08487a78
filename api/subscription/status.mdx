@@ -1,0 +1,198 @@
+---
+title: "Get Subscription Status"
+description: "Retrieve the current subscription status for the authenticated user"
+---
+
+## Endpoint
+
+```
+GET /api/subscription/status
+```
+
+Retrieves the current subscription status for the authenticated user, including plan type, expiration date, and remaining days.
+
+## Authentication
+
+Requires a valid Supabase authentication token in the request headers.
+
+```http
+Authorization: Bearer <supabase_access_token>
+```
+
+## Response
+
+<ResponseField name="hasActiveSubscription" type="boolean" required>
+  Indicates whether the user has an active subscription
+</ResponseField>
+
+<ResponseField name="subscription" type="object">
+  Subscription details (only present if `hasActiveSubscription` is true)
+  
+  <ResponseField name="id" type="string" required>
+    Unique subscription identifier (UUID)
+  </ResponseField>
+  
+  <ResponseField name="planType" type="string" required>
+    The subscription plan type. Possible values:
+    - `PLAN_BASICO` - Basic plan (1 month, $49.900 COP)
+    - `PLAN_PRO` - Pro plan (1 month, $89.900 COP)
+    - `PLAN_PREMIUM` - Premium plan (1 month, $149.900 COP)
+  </ResponseField>
+  
+  <ResponseField name="status" type="string" required>
+    Current subscription status. Possible values:
+    - `active` - Subscription is active and valid
+    - `expired` - Subscription has expired
+    - `cancelled` - Subscription was cancelled by user
+  </ResponseField>
+  
+  <ResponseField name="startDate" type="string" required>
+    ISO 8601 timestamp when the subscription started
+  </ResponseField>
+  
+  <ResponseField name="endDate" type="string" required>
+    ISO 8601 timestamp when the subscription expires
+  </ResponseField>
+  
+  <ResponseField name="daysRemaining" type="number" required>
+    Number of days remaining until subscription expires
+  </ResponseField>
+  
+  <ResponseField name="paymentProvider" type="string">
+    Payment provider used. Possible values:
+    - `mercadopago`
+    - `wompi`
+  </ResponseField>
+  
+  <ResponseField name="amountPaid" type="number" required>
+    Amount paid in Colombian pesos (COP)
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```javascript
+const response = await fetch('/api/subscription/status', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json'
+  }
+});
+
+const data = await response.json();
+```
+
+## Example Response
+
+### Active Subscription
+
+```json
+{
+  "hasActiveSubscription": true,
+  "subscription": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "planType": "PLAN_PRO",
+    "status": "active",
+    "startDate": "2026-03-01T00:00:00.000Z",
+    "endDate": "2026-04-01T00:00:00.000Z",
+    "daysRemaining": 31,
+    "paymentProvider": "mercadopago",
+    "amountPaid": 89900
+  }
+}
+```
+
+### No Active Subscription
+
+```json
+{
+  "hasActiveSubscription": false
+}
+```
+
+## Error Responses
+
+### 401 Unauthorized
+
+Returned when the user is not authenticated.
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "Authentication required"
+}
+```
+
+### 500 Internal Server Error
+
+Returned when there's a server error retrieving the subscription.
+
+```json
+{
+  "error": "Internal Server Error",
+  "message": "Failed to fetch subscription status"
+}
+```
+
+## Subscription Expiration Logic
+
+The endpoint automatically filters out expired subscriptions by checking:
+
+1. `status` must be `active`
+2. `end_date` must be greater than the current timestamp
+
+Subscriptions are automatically marked as expired by a database cron job that runs the `expire_old_subscriptions()` function, which:
+
+- Updates subscriptions with `end_date < NOW()` to `status = 'expired'`
+- Updates the user's profile to reflect no active subscription
+
+## Usage Example
+
+Typically used in the dashboard to display subscription information:
+
+```typescript
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+
+function SubscriptionStatus() {
+  const [subscription, setSubscription] = useState(null);
+  const supabase = createClient();
+  
+  useEffect(() => {
+    async function fetchStatus() {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/subscription/status', {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.hasActiveSubscription) {
+        setSubscription(data.subscription);
+      }
+    }
+    
+    fetchStatus();
+  }, []);
+  
+  if (!subscription) {
+    return <div>No active subscription</div>;
+  }
+  
+  return (
+    <div>
+      <h2>Plan: {subscription.planType}</h2>
+      <p>Days remaining: {subscription.daysRemaining}</p>
+      <p>Expires: {new Date(subscription.endDate).toLocaleDateString()}</p>
+    </div>
+  );
+}
+```
+
+## Related Endpoints
+
+- [Create Subscription](/api/subscription/create) - Create a new subscription after payment

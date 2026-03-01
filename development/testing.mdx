@@ -1,0 +1,434 @@
+---
+title: "Testing Guide"
+description: "Testing strategy, setup, and examples for JCV Fitness"
+---
+
+JCV Fitness uses **Vitest** with **React Testing Library** for comprehensive unit and integration testing. All tests must pass before committing code.
+
+## Test Stack
+
+- **Test Runner**: Vitest (fast, Vite-powered)
+- **Testing Library**: @testing-library/react
+- **Assertions**: Vitest + @testing-library/jest-dom
+- **Environment**: jsdom (browser simulation)
+- **Mocking**: Vitest mocking utilities
+
+## Setup
+
+### Configuration
+
+The test configuration is defined in `vitest.config.ts`:
+
+```typescript
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+import path from "path";
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./src/test/setup.ts"],
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+});
+```
+
+### Setup File
+
+The setup file at `src/test/setup.ts` imports testing utilities:
+
+```typescript
+import "@testing-library/jest-dom/vitest";
+```
+
+### Mock Utilities
+
+Common mocks are available in `src/test/mocks/supabase.ts` for Supabase client testing.
+
+## Running Tests
+
+### Test Commands
+
+Defined in `package.json`:
+
+```bash
+# Run tests in watch mode (default)
+npm test
+
+# Run tests once and exit
+npm run test:run
+
+# Run tests with coverage
+npm run test:run -- --coverage
+
+# Run specific test file
+npm test -- src/features/auth/context/__tests__/AuthContext.test.tsx
+
+# Run tests matching pattern
+npm test -- --grep "should handle sign in"
+```
+
+### Pre-commit Testing
+
+**ALWAYS run tests before committing:**
+
+```bash
+# Build and test
+npm run build && npm test
+
+# If all pass, commit
+git add <files>
+git commit -m "feat: your message"
+```
+
+## Testing Patterns
+
+### Component Testing
+
+Example from `src/features/landing/__tests__/landing-components.test.tsx`:
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { Hero } from "../components/Hero";
+
+describe("Hero Component", () => {
+  it("should render hero heading", () => {
+    render(<Hero />);
+    expect(screen.getByRole("heading")).toBeInTheDocument();
+  });
+
+  it("should render CTA button", () => {
+    render(<Hero />);
+    expect(screen.getByRole("button", { name: /comenzar/i })).toBeInTheDocument();
+  });
+});
+```
+
+### Context Testing
+
+Example from `src/features/auth/context/__tests__/AuthContext.test.tsx`:
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { AuthProvider, useAuth } from "../AuthContext";
+import { createMockSupabaseClient } from "@/test/mocks/supabase";
+
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: vi.fn(),
+}));
+
+import { createClient } from "@/lib/supabase/client";
+
+function TestComponent() {
+  const auth = useAuth();
+  return <div>{auth.isAuthenticated ? "Logged in" : "Logged out"}</div>;
+}
+
+describe("AuthContext", () => {
+  let mockSupabase: ReturnType<typeof createMockSupabaseClient>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSupabase = createMockSupabaseClient();
+    vi.mocked(createClient).mockReturnValue(mockSupabase.client as never);
+  });
+
+  it("should start with isLoading true", () => {
+    mockSupabase.client.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
+
+    expect(screen.getByText("Logged out")).toBeInTheDocument();
+  });
+});
+```
+
+### Service Testing
+
+Example from `src/features/subscription/services/__tests__/subscription-service.test.ts`:
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { SubscriptionService } from "../subscription-service";
+import { createMockSupabaseClient } from "@/test/mocks/supabase";
+
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: vi.fn(),
+}));
+
+import { createClient } from "@/lib/supabase/client";
+
+describe("SubscriptionService", () => {
+  let service: SubscriptionService;
+  let mockSupabase: ReturnType<typeof createMockSupabaseClient>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSupabase = createMockSupabaseClient();
+    vi.mocked(createClient).mockReturnValue(mockSupabase.client as never);
+    service = new SubscriptionService();
+  });
+
+  describe("getActiveSubscription", () => {
+    it("should return active subscription when found", async () => {
+      const mockSub = createMockSubscription();
+      mockSupabase.mocks.maybeSingle.mockResolvedValue({
+        data: mockSub,
+        error: null,
+      });
+
+      const result = await service.getActiveSubscription("test-user-id");
+
+      expect(result).toEqual(mockSub);
+      expect(mockSupabase.mocks.from).toHaveBeenCalledWith("subscriptions");
+      expect(mockSupabase.mocks.eq).toHaveBeenCalledWith("user_id", "test-user-id");
+      expect(mockSupabase.mocks.eq).toHaveBeenCalledWith("status", "active");
+    });
+  });
+});
+```
+
+### Store Testing (Zustand)
+
+Example from `src/features/wizard/__tests__/wizard-store.test.ts`:
+
+```typescript
+import { describe, it, expect, beforeEach } from "vitest";
+import { useWizardStore } from "../store/wizard-store";
+
+describe("Wizard Store", () => {
+  beforeEach(() => {
+    useWizardStore.getState().reset();
+  });
+
+  describe("Initial State", () => {
+    it("should have correct initial values", () => {
+      const state = useWizardStore.getState();
+      expect(state.currentStep).toBe(1);
+      expect(state.level).toBeNull();
+      expect(state.goal).toBeNull();
+    });
+  });
+
+  describe("Level Selection", () => {
+    it("should set training level", () => {
+      useWizardStore.getState().setLevel("intermedio");
+      expect(useWizardStore.getState().level).toBe("intermedio");
+    });
+  });
+
+  describe("Navigation", () => {
+    it("should go to next step", () => {
+      useWizardStore.getState().nextStep();
+      expect(useWizardStore.getState().currentStep).toBe(2);
+    });
+
+    it("should not go below step 1", () => {
+      useWizardStore.getState().prevStep();
+      expect(useWizardStore.getState().currentStep).toBe(1);
+    });
+  });
+});
+```
+
+### User Interaction Testing
+
+Using `@testing-library/user-event`:
+
+```typescript
+import userEvent from "@testing-library/user-event";
+
+it("should call signIn on button click", async () => {
+  const user = userEvent.setup();
+  render(<LoginForm />);
+
+  await user.type(screen.getByLabelText(/email/i), "test@test.com");
+  await user.type(screen.getByLabelText(/password/i), "password123");
+  await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+  expect(mockSignIn).toHaveBeenCalledWith("test@test.com", "password123");
+});
+```
+
+## Test Organization
+
+### File Naming
+
+Test files use the `.test.ts` or `.test.tsx` suffix:
+
+```
+feature/
+├── components/
+│   ├── Component.tsx
+│   └── __tests__/
+│       └── Component.test.tsx
+├── services/
+│   ├── service.ts
+│   └── __tests__/
+│       └── service.test.ts
+└── store/
+    ├── store.ts
+    └── __tests__/
+        └── store.test.ts
+```
+
+### Test Structure
+
+Use descriptive `describe` and `it` blocks:
+
+```typescript
+describe("FeatureName", () => {
+  describe("SubFeature", () => {
+    it("should do something specific", () => {
+      // Arrange
+      const input = "test";
+
+      // Act
+      const result = doSomething(input);
+
+      // Assert
+      expect(result).toBe("expected");
+    });
+  });
+});
+```
+
+## Mocking
+
+### Supabase Mocking
+
+Use the provided mock utilities:
+
+```typescript
+import {
+  createMockSupabaseClient,
+  createMockUser,
+  createMockSession,
+  createMockProfile,
+  createMockSubscription,
+} from "@/test/mocks/supabase";
+
+const mockSupabase = createMockSupabaseClient();
+const mockUser = createMockUser({ email: "test@example.com" });
+const mockSession = createMockSession(mockUser);
+```
+
+### Module Mocking
+
+```typescript
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: vi.fn(),
+}));
+
+import { createClient } from "@/lib/supabase/client";
+
+vi.mocked(createClient).mockReturnValue(mockSupabase.client);
+```
+
+### Function Mocking
+
+```typescript
+const mockFn = vi.fn();
+mockFn.mockReturnValue("result");
+mockFn.mockResolvedValue("async result");
+
+expect(mockFn).toHaveBeenCalled();
+expect(mockFn).toHaveBeenCalledWith("arg1", "arg2");
+```
+
+## Testing Checklist
+
+Before committing:
+
+- [ ] All existing tests pass
+- [ ] New features have tests
+- [ ] Edge cases are covered
+- [ ] Async operations use `waitFor`
+- [ ] Mocks are properly cleaned up
+- [ ] Tests are isolated and independent
+- [ ] `npm run build && npm test` succeeds
+
+## Best Practices
+
+1. **Test behavior, not implementation**: Focus on what the user sees and does
+2. **Use Testing Library queries**: Prefer `getByRole`, `getByLabelText` over `getByTestId`
+3. **Avoid testing internals**: Don't test private functions or state directly
+4. **Keep tests focused**: One assertion per test when possible
+5. **Clean up**: Use `beforeEach`/`afterEach` to reset state
+6. **Async handling**: Always use `waitFor` for async operations
+7. **Mock external dependencies**: Supabase, API calls, etc.
+
+## Coverage Goals
+
+Aim for good test coverage on:
+
+- Core business logic (subscription, payment flows)
+- Authentication and authorization
+- State management (Zustand stores)
+- Critical user paths (wizard, checkout)
+- API integrations
+
+Not everything needs 100% coverage, but critical paths should be well-tested.
+
+## Debugging Tests
+
+```bash
+# Run tests with debug output
+npm test -- --reporter=verbose
+
+# Run single test file in watch mode
+npm test -- path/to/test.test.ts
+
+# Use screen.debug() in tests
+import { screen } from "@testing-library/react";
+screen.debug(); // Prints current DOM
+```
+
+## Common Issues
+
+### Timeout Errors
+
+Increase timeout for slow tests:
+
+```typescript
+it("slow test", async () => {
+  // test code
+}, 10000); // 10 second timeout
+```
+
+### Act Warnings
+
+Wrap state updates in `act()`:
+
+```typescript
+import { act } from "@testing-library/react";
+
+await act(async () => {
+  // state update
+});
+```
+
+### Unmounted Component Warnings
+
+Ensure async operations complete before test ends:
+
+```typescript
+await waitFor(() => {
+  expect(result).toBe(expected);
+});
+```

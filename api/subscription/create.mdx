@@ -1,0 +1,287 @@
+---
+title: "Create Subscription"
+description: "Create a new subscription after successful payment"
+---
+
+## Endpoint
+
+```
+POST /api/subscription/create
+```
+
+Creates a new subscription for the authenticated user after a successful payment. This endpoint is typically called from the payment success webhook or redirect page.
+
+## Authentication
+
+Requires a valid Supabase authentication token in the request headers.
+
+```http
+Authorization: Bearer <supabase_access_token>
+```
+
+## Request Body
+
+<ParamField body="planType" type="string" required>
+  The subscription plan type. Must be one of:
+  - `PLAN_BASICO` - Basic plan (1 month duration)
+  - `PLAN_PRO` - Pro plan (1 month duration)
+  - `PLAN_PREMIUM` - Premium plan (1 month duration)
+</ParamField>
+
+<ParamField body="paymentProvider" type="string" required>
+  The payment provider used for the transaction. Must be one of:
+  - `mercadopago` - MercadoPago payment
+  - `wompi` - Wompi payment
+</ParamField>
+
+<ParamField body="paymentReference" type="string" required>
+  The payment reference ID from the payment provider (e.g., MercadoPago payment ID)
+</ParamField>
+
+<ParamField body="amountPaid" type="number" required>
+  The amount paid in Colombian pesos (COP). Must match the plan price:
+  - PLAN_BASICO: 49900
+  - PLAN_PRO: 89900
+  - PLAN_PREMIUM: 149900
+</ParamField>
+
+## Response
+
+<ResponseField name="subscription" type="object" required>
+  The created subscription object
+  
+  <ResponseField name="id" type="string" required>
+    Unique subscription identifier (UUID)
+  </ResponseField>
+  
+  <ResponseField name="userId" type="string" required>
+    User ID associated with the subscription
+  </ResponseField>
+  
+  <ResponseField name="planType" type="string" required>
+    The subscription plan type (PLAN_BASICO, PLAN_PRO, or PLAN_PREMIUM)
+  </ResponseField>
+  
+  <ResponseField name="status" type="string" required>
+    Always `active` for newly created subscriptions
+  </ResponseField>
+  
+  <ResponseField name="startDate" type="string" required>
+    ISO 8601 timestamp when the subscription starts (current date/time)
+  </ResponseField>
+  
+  <ResponseField name="endDate" type="string" required>
+    ISO 8601 timestamp when the subscription expires (start date + 1 month)
+  </ResponseField>
+  
+  <ResponseField name="paymentProvider" type="string" required>
+    Payment provider used (mercadopago or wompi)
+  </ResponseField>
+  
+  <ResponseField name="paymentReference" type="string" required>
+    Payment reference from the provider
+  </ResponseField>
+  
+  <ResponseField name="amountPaid" type="number" required>
+    Amount paid in COP
+  </ResponseField>
+  
+  <ResponseField name="createdAt" type="string" required>
+    ISO 8601 timestamp when the subscription was created
+  </ResponseField>
+  
+  <ResponseField name="updatedAt" type="string" required>
+    ISO 8601 timestamp when the subscription was last updated
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="profile" type="object" required>
+  Updated user profile information
+  
+  <ResponseField name="hasActiveSubscription" type="boolean" required>
+    Always `true` after subscription creation
+  </ResponseField>
+  
+  <ResponseField name="currentPlan" type="string" required>
+    The current active plan type
+  </ResponseField>
+  
+  <ResponseField name="subscriptionEndDate" type="string" required>
+    ISO 8601 timestamp when the subscription expires
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```javascript
+const response = await fetch('/api/subscription/create', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    planType: 'PLAN_PRO',
+    paymentProvider: 'mercadopago',
+    paymentReference: '1234567890',
+    amountPaid: 89900
+  })
+});
+
+const data = await response.json();
+```
+
+## Example Response
+
+```json
+{
+  "subscription": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "userId": "123e4567-e89b-12d3-a456-426614174000",
+    "planType": "PLAN_PRO",
+    "status": "active",
+    "startDate": "2026-03-01T12:00:00.000Z",
+    "endDate": "2026-04-01T12:00:00.000Z",
+    "paymentProvider": "mercadopago",
+    "paymentReference": "1234567890",
+    "amountPaid": 89900,
+    "createdAt": "2026-03-01T12:00:00.000Z",
+    "updatedAt": "2026-03-01T12:00:00.000Z"
+  },
+  "profile": {
+    "hasActiveSubscription": true,
+    "currentPlan": "PLAN_PRO",
+    "subscriptionEndDate": "2026-04-01T12:00:00.000Z"
+  }
+}
+```
+
+## Error Responses
+
+### 400 Bad Request
+
+Returned when required fields are missing or invalid.
+
+```json
+{
+  "error": "Bad Request",
+  "message": "Invalid plan type. Must be PLAN_BASICO, PLAN_PRO, or PLAN_PREMIUM"
+}
+```
+
+```json
+{
+  "error": "Bad Request",
+  "message": "Missing required field: paymentReference"
+}
+```
+
+### 401 Unauthorized
+
+Returned when the user is not authenticated.
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "Authentication required"
+}
+```
+
+### 409 Conflict
+
+Returned when the user already has an active subscription.
+
+```json
+{
+  "error": "Conflict",
+  "message": "User already has an active subscription"
+}
+```
+
+### 500 Internal Server Error
+
+Returned when there's a server error creating the subscription.
+
+```json
+{
+  "error": "Internal Server Error",
+  "message": "Failed to create subscription"
+}
+```
+
+## Subscription Duration Logic
+
+All subscription plans currently have a duration of **1 month**. The `endDate` is calculated as:
+
+```typescript
+const startDate = new Date();
+const endDate = new Date();
+endDate.setMonth(endDate.getMonth() + 1); // Add 1 month
+```
+
+## Database Updates
+
+Creating a subscription performs the following database operations:
+
+1. **Insert into `subscriptions` table**:
+   - Creates new subscription record with status `active`
+   - Records payment information
+   - Sets start and end dates
+
+2. **Update `profiles` table**:
+   - Sets `has_active_subscription = true`
+   - Sets `current_plan` to the selected plan type
+   - Sets `subscription_end_date` to the expiration date
+
+## Row Level Security (RLS)
+
+The subscription is created with proper RLS policies:
+
+- Users can only create subscriptions for themselves (verified via `auth.uid()`)
+- Users can only view their own subscriptions
+- Subscription data is protected and isolated per user
+
+## Usage in Payment Flow
+
+This endpoint is typically called after payment confirmation:
+
+```typescript
+// 1. User completes payment via MercadoPago
+// 2. Payment webhook or success page calls this endpoint
+
+async function handlePaymentSuccess(paymentId: string, planType: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  const response = await fetch('/api/subscription/create', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session?.access_token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      planType: planType,
+      paymentProvider: 'mercadopago',
+      paymentReference: paymentId,
+      amountPaid: getPlanPrice(planType)
+    })
+  });
+  
+  if (response.ok) {
+    const { subscription } = await response.json();
+    // Redirect to dashboard
+    window.location.href = '/dashboard';
+  }
+}
+```
+
+## Subscription Plans Reference
+
+| Plan Type | Duration | Price (COP) | Features |
+|-----------|----------|-------------|----------|
+| PLAN_BASICO | 1 month | 49,900 | 7-day meal plan, home workout routine, app access, email support |
+| PLAN_PRO | 1 month | 89,900 | Personalized meal plan, gym + home routines, exercise videos, priority support, weekly tracking |
+| PLAN_PREMIUM | 1 month | 149,900 | All Pro features + 1-on-1 coaching, monthly adjustments, VIP community access, results guarantee |
+
+## Related Endpoints
+
+- [Get Subscription Status](/api/subscription/status) - Check current subscription status

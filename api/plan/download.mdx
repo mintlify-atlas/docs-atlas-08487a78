@@ -1,0 +1,320 @@
+---
+title: "Download Plan PDF"
+description: "Generate and download a personalized workout and meal plan as a PDF"
+---
+
+## Overview
+
+Generates a professional PDF document containing the user's complete workout and meal plan. The PDF includes:
+
+- Personalized cover page with user name and plan details
+- Exercise library with Colombian names and technical terms
+- Daily workout schedules with sets, reps, and rest times
+- Meal plans with calorie and macro breakdowns
+- Progress tracking calendar
+- Weekly/monthly summary pages
+- Motivational content and contact information
+
+## Freemium Restrictions
+
+### Free Plans
+
+- **Watermarked**: All pages include watermarks/branding
+- **No download tracking**: `download_count` does NOT increment
+- **PDF generation**: Available via client-side jsPDF
+
+### Paid Plans
+
+- **No watermark**: Clean, professional PDFs
+- **Download tracking**: Each download increments `download_count`
+- **PDF generation**: Same as free, but tracked
+
+## PDF Generation
+
+The PDF is generated **client-side** using jsPDF. This is NOT a server endpoint, but a utility function.
+
+### Function Signature
+
+```typescript
+import { generateWorkoutPDF } from "@/features/wizard/utils/generate-pdf";
+
+interface PDFData {
+  state: WizardState;           // User's plan configuration
+  exercises: Exercise[];        // Exercise database
+  calories: {                   // Calculated calorie targets
+    bmr: number;                // Basal Metabolic Rate
+    tdee: number;               // Total Daily Energy Expenditure
+    target: number;             // Target calories based on goal
+  } | null;
+}
+
+await generateWorkoutPDF(data: PDFData): Promise<void>
+```
+
+## PDF Contents
+
+### 1. Cover Page
+
+- JCV 24 FITNESS logo and branding
+- User's name (personalized)
+- Training objective (goal)
+- Program duration (e.g., "1 Mes")
+- Training level (e.g., "Intermedio")
+- Generation date
+
+### 2. Training Overview
+
+- Program data summary:
+  - Session duration (minutes)
+  - Total exercises included
+  - Total days
+  - Equipment needed
+- Exercise library grouped by muscle group:
+  - Colombian name (e.g., "Lagartijas")
+  - Technical name (e.g., "Push-ups")
+  - Target muscles
+  - Sets and reps
+
+### 3. Daily Workout Pages
+
+One page per workout day:
+
+- Day header (e.g., "LUNES - Tren Superior")
+- Warmup section (5 min)
+- Main workout:
+  - Exercise cards with:
+    - Name and technical term
+    - Target muscles
+    - Sets x Reps (e.g., "4x15")
+    - Rest time
+    - Checkboxes for tracking sets
+- Cooldown section (5 min)
+- Notes area
+
+### 4. Rest Days
+
+- Recovery day card
+- Suggested activities:
+  - Light 20-30 min walk
+  - Stretching and mobility work
+
+### 5. Progress Calendar
+
+- Weekly pattern overview
+- Day-by-day checkboxes (up to 42 days shown)
+- Workout type for each day
+
+### 6. Weekly/Monthly Summary
+
+For programs longer than 1 week:
+
+- Week cards showing:
+  - Week number
+  - Day range (e.g., "Días 1-7")
+  - Month number (for monthly programs)
+  - Training vs rest day breakdown
+  - Completion checkbox
+
+### 7. Monthly Milestones
+
+For programs 30+ days:
+
+- Month 1: Adaptation phase
+- Month 2: Progression phase
+- Month 3: Consolidation phase
+
+### 8. Meal Plan Pages
+
+If `userBodyData` and `calories` are provided:
+
+- Macro distribution based on goal:
+  - **Fat loss**: 40% protein, 30% carbs, 30% fat
+  - **Muscle gain**: 30% protein, 45% carbs, 25% fat
+  - **Maintain**: 30% protein, 40% carbs, 30% fat
+- Daily meal cards:
+  - Meal time and name
+  - Food items with portions
+  - Calories and macros per meal
+  - Daily totals
+
+### 9. Motivational Final Page
+
+- Personalized message with user's name
+- Motivational quote
+- Contact information:
+  - WhatsApp: 314 382 64 30
+  - Instagram: @jcv_24
+
+## Watermark System
+
+For free plans, watermarks should be added to each page. The current implementation does NOT include watermarks yet - this is a TODO.
+
+### Recommended Watermark Implementation
+
+```typescript
+function addWatermark(pdf: jsPDF, planType: PlanType) {
+  if (planType === "free") {
+    pdf.setTextColor(100, 100, 100);
+    pdf.setFontSize(40);
+    pdf.text(
+      "PLAN GRATUITO",
+      pageWidth / 2,
+      pageHeight / 2,
+      {
+        align: "center",
+        angle: 45,
+        opacity: 0.15
+      }
+    );
+  }
+}
+```
+
+## Download Tracking
+
+Only for paid plans:
+
+```
+RPC: register_plan_download(plan_uuid)
+```
+
+### Request Parameters
+
+<ParamField path="plan_uuid" type="UUID" required>
+  The ID of the plan being downloaded
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Whether the download was successfully registered
+</ResponseField>
+
+### Logic
+
+The function:
+
+1. Verifies the caller owns the plan
+2. Checks if user has active subscription
+3. Increments `download_count` if paid
+4. Returns `false` if user is not paid
+
+### Example Usage
+
+```typescript
+import { planService } from "@/features/plans/services/plan-service";
+
+const success = await planService.registerDownload(planId);
+
+if (success) {
+  console.log("Download tracked");
+} else {
+  console.log("Download not tracked (free plan or error)");
+}
+```
+
+## Complete Example
+
+```typescript
+import { generateWorkoutPDF } from "@/features/wizard/utils/generate-pdf";
+import { planService } from "@/features/plans/services/plan-service";
+import { exercises } from "@/features/wizard/data/exercises";
+import { calculateCalories } from "@/lib/calories";
+
+async function downloadPlan(plan: UserPlan) {
+  const { planData, planType, id } = plan;
+  
+  // Calculate calories if body data available
+  const calories = planData.userBodyData
+    ? calculateCalories(planData.userBodyData)
+    : null;
+  
+  // Generate PDF
+  await generateWorkoutPDF({
+    state: planData,
+    exercises: exercises,
+    calories: calories
+  });
+  
+  // Track download if paid
+  if (planType === "paid") {
+    await planService.registerDownload(id);
+  }
+}
+```
+
+## PDF Styling
+
+### Color Palette
+
+```typescript
+const COLORS = {
+  cyan: [34, 211, 238],      // Primary brand color
+  red: [239, 68, 68],        // Goal highlights
+  green: [74, 222, 128],     // Success/meals
+  orange: [251, 146, 60],    // Level badges
+  yellow: [250, 204, 21],    // Milestones
+  white: [255, 255, 255],    // Text
+  gray: [156, 163, 175],     // Secondary text
+  darkGray: [75, 85, 99],    // Footer
+  bgDark: [15, 23, 42],      // Page background
+  bgCard: [30, 41, 59],      // Card backgrounds
+};
+```
+
+### Typography
+
+- **Headings**: Helvetica Bold, 22-42pt
+- **Subheadings**: Helvetica Bold, 11-14pt
+- **Body text**: Helvetica Normal, 8-10pt
+- **Labels**: Helvetica Normal, 7-9pt
+
+### Layout
+
+- **Format**: A4 Portrait (210mm x 297mm)
+- **Margins**: 15mm on all sides
+- **Cards**: Rounded rectangles (3-4mm radius)
+- **Borders**: Cyan accent (0.3-0.5mm width)
+
+## File Naming
+
+Generated PDFs follow this pattern:
+
+```
+JCV_Fitness_{UserName}_{YYYY-MM-DD}.pdf
+```
+
+Example: `JCV_Fitness_Juan_Perez_2026-03-01.pdf`
+
+If no user name: `JCV_Fitness_Plan_{YYYY-MM-DD}.pdf`
+
+## Browser Compatibility
+
+Requires modern browser with:
+
+- jsPDF library support
+- Local file download capability
+- JavaScript enabled
+
+Tested on:
+
+- Chrome 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
+
+## Performance
+
+PDF generation time varies by program length:
+
+- 1 week plan: ~1-2 seconds
+- 1 month plan: ~3-5 seconds
+- 3 month plan: ~8-12 seconds
+
+Large PDFs (90 days) can be 50-100+ pages.
+
+## Related
+
+- [Create Plan](/api/plan/create) - Create a new plan
+- [Check Plan Access](/api/plan/access) - Get plan status
+- [Subscription System](/features/subscription-system) - Upgrade for watermark-free PDFs

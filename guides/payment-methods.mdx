@@ -1,0 +1,552 @@
+---
+title: 'Payment Methods'
+description: 'Complete guide to payment options for JCV Fitness subscriptions using MercadoPago and Wompi'
+---
+
+# Payment Methods
+
+JCV Fitness accepts payments through two major Latin American payment gateways: **MercadoPago** and **Wompi**. This guide explains how to pay for your subscription using either method.
+
+## Supported Payment Gateways
+
+JCV Fitness integrates with two secure, PCI DSS-certified payment processors:
+
+<CardGroup cols={2}>
+  <Card title="MercadoPago" icon="money-bill-wave">
+    **Primary payment method**
+    
+    - Credit/debit cards
+    - Bank transfers
+    - Cash payments (Efecty, Baloto)
+    - Installment plans available
+    - Widely used in Colombia and Latin America
+  </Card>
+
+  <Card title="Wompi" icon="credit-card">
+    **Alternative payment method**
+    
+    - PSE (bank transfers)
+    - Nequi
+    - Bancolombia QR
+    - Credit/debit cards
+    - Fast Colombian payment options
+  </Card>
+</CardGroup>
+
+<Note>
+  Both gateways are secure, encrypted, and compliant with international payment standards. Your financial data is never stored on JCV Fitness servers.
+</Note>
+
+## Pricing in Colombian Pesos (COP)
+
+All JCV Fitness plans are priced in Colombian Pesos:
+
+| Plan | Monthly Price | Features |
+|------|---------------|----------|
+| **Básico** | $49,900 COP | 7-day meal plan, home workouts, app access, email support |
+| **Pro** | $89,900 COP | Personalized meal plan, gym + home workouts, videos, priority support |
+| **Premium** | $149,900 COP | Everything in Pro + 1-on-1 coaching, monthly adjustments, VIP community |
+
+<Tip>
+  Prices are displayed in COP for all payment methods. Your bank may apply currency conversion fees if paying with a foreign card.
+</Tip>
+
+## Payment Flow
+
+The payment process is the same regardless of which gateway you choose:
+
+<Steps>
+  <Step title="Select Your Plan">
+    After completing the wizard or from `/pricing`:
+    
+    1. Review the three plan options
+    2. Click **"Seleccionar plan"** on your chosen tier
+    3. The system checks if you're logged in
+  </Step>
+
+  <Step title="Create Account or Login">
+    If you're not logged in:
+    
+    - The **AuthModal** appears
+    - Enter your email and password
+    - Or use the magic link (passwordless login)
+    - New users: Click **"Crear cuenta"** to register
+    
+    **Step Indicator:** You'll see "Step 1 of 2 - Cuenta" at the top of the modal.
+  </Step>
+
+  <Step title="Review Checkout">
+    The **CheckoutModal** opens showing:
+    
+    - Selected plan name and features
+    - Total amount to pay (in COP)
+    - Available payment methods
+    - Security badges (SSL, PCI DSS)
+    
+    **Step Indicator:** You'll see "Step 2 of 2 - Pago" at the top.
+  </Step>
+
+  <Step title="Choose Payment Method">
+    Click one of the payment buttons:
+    
+    - **"Pagar con Mercado Pago"** (blue button)
+    - **"Pagar con Wompi"** (green button, when enabled)
+  </Step>
+
+  <Step title="Complete Payment">
+    You'll be redirected to the payment gateway to:
+    
+    - Enter payment details
+    - Authorize the transaction
+    - Wait for confirmation
+  </Step>
+
+  <Step title="Return to JCV Fitness">
+    After payment, you're redirected back to:
+    
+    - **Success:** `/payment/success` - Subscription activates
+    - **Failure:** `/payment/failure` - Try again
+    - **Pending:** `/payment/pending` - Wait for confirmation
+  </Step>
+</Steps>
+
+## Paying with MercadoPago
+
+MercadoPago is the primary payment method for JCV Fitness.
+
+### What is MercadoPago?
+
+MercadoPago is Latin America's leading payment platform, owned by MercadoLibre. It supports:
+
+- Credit cards (Visa, Mastercard, Amex, Diners)
+- Debit cards
+- Bank transfers (PSE in Colombia)
+- Cash payments at convenience stores
+- Installment plans (cuotas)
+
+### MercadoPago Payment Process
+
+<Steps>
+  <Step title="Click MercadoPago Button">
+    In the CheckoutModal, click **"Pagar con Mercado Pago"** (blue button).
+  </Step>
+
+  <Step title="Redirect to MercadoPago">
+    You're taken to MercadoPago's secure checkout page showing:
+    
+    - Item: "Plan JCV Fitness - [Plan Name]"
+    - Amount: Total in COP
+    - Your email (pre-filled)
+  </Step>
+
+  <Step title="Select Payment Method">
+    Choose from:
+    
+    **Credit/Debit Card:**
+    - Enter card number, expiration, CVV
+    - Cardholder name and ID number
+    - Choose installments (if available)
+    
+    **Bank Transfer (PSE):**
+    - Select your bank
+    - Log in to online banking
+    - Authorize transfer
+    
+    **Cash Payment:**
+    - Select Efecty or Baloto
+    - Receive payment code
+    - Pay at physical location within 3 days
+  </Step>
+
+  <Step title="Authorize Payment">
+    - Review the final amount
+    - Confirm payment
+    - Wait for processing (usually instant)
+  </Step>
+
+  <Step title="Confirmation">
+    **Success:**
+    - MercadoPago shows "Pago aprobado"
+    - You're redirected to `/payment/success`
+    - Subscription activates immediately
+    
+    **Failure:**
+    - Error message displayed
+    - Redirected to `/payment/failure`
+    - No charge to your account
+    
+    **Pending:**
+    - Payment is processing
+    - You'll receive email when confirmed
+    - Usually confirms within 24 hours
+  </Step>
+</Steps>
+
+### MercadoPago Testing (Sandbox)
+
+During development or testing, JCV Fitness may use MercadoPago's sandbox:
+
+**Test Credit Card:**
+- Card: `5031 7557 3453 0604` (Mastercard)
+- Expiration: Any future date
+- CVV: `123`
+- Name: `APRO` (approved) or `OTHE` (other status)
+
+<Warning>
+  Test cards only work in sandbox mode. Production uses real payment processing.
+</Warning>
+
+### MercadoPago Fees
+
+MercadoPago charges transaction fees (absorbed by JCV Fitness):
+
+- Credit cards: ~3.99% + fixed fee
+- Debit cards: ~2.99%
+- PSE transfers: ~$900 COP
+- Cash payments: ~$3,000 COP
+
+You pay the displayed price - fees are not passed to customers.
+
+## Paying with Wompi
+
+Wompi is an alternative Colombian payment gateway specializing in local methods.
+
+### What is Wompi?
+
+Wompi is a Colombian payment platform optimized for local payment methods:
+
+- PSE (Pagos Seguros en Línea) - Direct bank transfers
+- Nequi - Mobile wallet
+- Bancolombia QR - Scan to pay
+- Credit/debit cards
+- Daviplata - Another mobile wallet
+
+### Wompi Payment Process
+
+<Steps>
+  <Step title="Click Wompi Button">
+    In the CheckoutModal, click **"Pagar con Wompi"** (green button).
+    
+    <Note>
+      Wompi may be temporarily disabled during beta. If you don't see the button, use MercadoPago.
+    </Note>
+  </Step>
+
+  <Step title="Wompi Widget Opens">
+    A payment widget appears as an overlay showing:
+    
+    - Amount to pay
+    - Reference number
+    - Available payment methods
+  </Step>
+
+  <Step title="Select Payment Method">
+    Choose from:
+    
+    **PSE (Bank Transfer):**
+    - Select your bank from dropdown
+    - Choose account type (Savings/Checking)
+    - Enter personal ID
+    - Redirected to bank's login
+    - Authorize payment
+    
+    **Nequi:**
+    - Enter your Nequi phone number
+    - Receive push notification on phone
+    - Approve payment in Nequi app
+    
+    **Credit/Debit Card:**
+    - Enter card details
+    - Authorize 3D Secure if required
+    - Instant confirmation
+    
+    **Bancolombia QR:**
+    - Open Bancolombia app
+    - Scan QR code displayed
+    - Confirm payment in app
+  </Step>
+
+  <Step title="Payment Processing">
+    - Wompi processes the transaction
+    - Usually instant (cards, Nequi)
+    - PSE may take 1-2 hours
+  </Step>
+
+  <Step title="Return to JCV Fitness">
+    After Wompi confirms:
+    
+    - **Approved:** Subscription activates, redirected to `/payment/success`
+    - **Declined:** No charge, error message shown
+    - **Pending:** Wait for confirmation email
+  </Step>
+</Steps>
+
+### Wompi Testing (Sandbox)
+
+Wompi test mode uses special values:
+
+**Test Card (Approved):**
+- Card: `4242 4242 4242 4242` (Visa)
+- Expiration: Any future date
+- CVV: Any 3 digits
+
+**Test PSE:**
+- Bank: "Banco de Pruebas"
+- Will simulate successful transfer
+
+### Wompi Fees
+
+Wompi transaction fees (absorbed by JCV Fitness):
+
+- PSE: ~$900 COP + 0.95%
+- Nequi: ~2.49%
+- Cards: ~3.49%
+- QR payments: ~1.95%
+
+## Payment Success
+
+When your payment is approved:
+
+### Immediate Actions
+
+1. **Subscription Created**
+   - Database record created in `subscriptions` table
+   - Status set to `active`
+   - End date calculated (current date + 1 month)
+   - Payment reference stored
+
+2. **Wizard Data Migrated**
+   - Your wizard responses moved from local storage to database
+   - Linked to your user account
+   - Used to generate your personalized plans
+
+3. **Welcome Email Sent**
+   - Confirmation of payment
+   - Subscription details
+   - Quick links to dashboard and plans
+   - Support contact information
+
+### Access Granted
+
+You immediately get:
+
+- Full dashboard access at `/dashboard`
+- Meal plan at `/plan/alimentacion`
+- Workout plan at `/plan/ejercicios`
+- PDF download at `/plan/download`
+- Support channels (email, WhatsApp)
+
+## Payment Failure
+
+If your payment is declined:
+
+### Common Reasons
+
+- **Insufficient funds** - Check account balance
+- **Card declined** - Contact your bank
+- **Incorrect details** - Verify card number, CVV, expiration
+- **Bank security block** - Bank may block online payments; call to authorize
+- **3D Secure failed** - Re-enter OTP or authorization code
+- **Expired card** - Use different payment method
+
+### What to Do
+
+<Steps>
+  <Step title="Review Error Message">
+    The payment gateway shows why the payment failed. Common messages:
+    
+    - "Tarjeta rechazada" - Card declined
+    - "Fondos insuficientes" - Insufficient funds
+    - "Datos incorrectos" - Incorrect details
+  </Step>
+
+  <Step title="Fix the Issue">
+    - Update payment details
+    - Try a different card
+    - Use alternative payment method (e.g., PSE instead of card)
+    - Contact your bank to authorize the transaction
+  </Step>
+
+  <Step title="Retry Payment">
+    Return to JCV Fitness and:
+    
+    1. Go to `/pricing`
+    2. Select your plan again
+    3. Try the payment again with corrected information
+  </Step>
+
+  <Step title="Contact Support if Needed">
+    If payment keeps failing:
+    
+    - WhatsApp: 314 382 64 30
+    - Provide: Plan you're trying to buy, payment method, error message
+    - Support can help troubleshoot or offer alternatives
+  </Step>
+</Steps>
+
+<Warning>
+  Failed payments do NOT create subscriptions. You won't be charged, but you also won't get plan access. You must successfully complete payment to activate.
+</Warning>
+
+## Payment Pending
+
+Some payment methods process asynchronously:
+
+### When Payments Pend
+
+- **Cash payments** (Efecty, Baloto) - Until you pay at physical location
+- **Bank transfers (PSE)** - Sometimes takes 1-2 hours to confirm
+- **Nequi** - If approval takes too long
+
+### What Happens
+
+1. You see `/payment/pending` page
+2. Message: "Tu pago está siendo procesado"
+3. You receive transaction ID for reference
+4. Subscription remains inactive until confirmed
+
+### Confirmation
+
+When the payment confirms:
+
+- **Webhook notification** sent to JCV Fitness from payment gateway
+- Subscription status updated to `active`
+- You receive **email confirmation**
+- Can now access plans
+
+**Typical confirmation time:**
+- PSE: 1-2 hours
+- Cash: Within 24 hours of paying
+- Nequi: Usually instant, max 10 minutes
+
+## Security & Privacy
+
+### How Your Data is Protected
+
+<CardGroup cols={2}>
+  <Card title="PCI DSS Compliant" icon="shield-halved">
+    Both MercadoPago and Wompi are PCI DSS Level 1 certified, the highest security standard for payment processors.
+  </Card>
+
+  <Card title="SSL Encryption" icon="lock">
+    All payment pages use 256-bit SSL encryption. Your data is encrypted in transit.
+  </Card>
+
+  <Card title="No Storage" icon="database">
+    JCV Fitness never stores your card numbers, CVVs, or banking credentials. Only payment references are saved.
+  </Card>
+
+  <Card title="Secure Redirects" icon="arrow-right-arrow-left">
+    Payment forms are hosted by gateways, not JCV Fitness. Your sensitive data never touches our servers.
+  </Card>
+</CardGroup>
+
+### What JCV Fitness Stores
+
+After payment, we store:
+
+- ✅ Payment ID (e.g., `mp-123456789`)
+- ✅ Payment provider ("mercadopago" or "wompi")
+- ✅ Amount paid
+- ✅ Payment date
+- ✅ Subscription start/end dates
+- ❌ Card numbers
+- ❌ CVV codes
+- ❌ Bank account details
+- ❌ Passwords or PINs
+
+## Refund Policy
+
+JCV Fitness evaluates refunds case-by-case.
+
+### Eligible for Refund
+
+- Technical issues preventing plan access
+- Duplicate charges
+- Unauthorized payments
+- Service not as described
+
+**Time limit:** Refund requests must be made within **7 days of payment**.
+
+### How to Request
+
+<Steps>
+  <Step title="Contact Support">
+    - WhatsApp: 314 382 64 30
+    - Or email through dashboard
+  </Step>
+
+  <Step title="Provide Details">
+    - Payment ID (from confirmation email)
+    - Reason for refund
+    - Screenshots if relevant
+  </Step>
+
+  <Step title="Review Process">
+    Support reviews your request (1-3 business days).
+  </Step>
+
+  <Step title="Refund Processed">
+    If approved:
+    
+    - Refund initiated through original payment method
+    - 5-10 business days to appear in your account
+    - Subscription is cancelled
+    - Access to plans is revoked
+  </Step>
+</Steps>
+
+<Note>
+  Refunds are processed through the original payment gateway (MercadoPago or Wompi). Timeline depends on your bank.
+</Note>
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="Which payment method is fastest?">
+    **Credit/debit cards** are instant. **Nequi** and **Bancolombia QR** are also very fast (under 1 minute). **PSE** can take 1-2 hours. **Cash payments** require visiting a physical location.
+  </Accordion>
+
+  <Accordion title="Can I pay with international cards?">
+    Yes, both MercadoPago and Wompi accept international Visa and Mastercard. Your bank may charge foreign transaction fees and currency conversion.
+  </Accordion>
+
+  <Accordion title="Are installment plans available?">
+    MercadoPago offers installments (cuotas) for credit cards. Options depend on your card issuer and amount. Wompi currently doesn't support installments.
+  </Accordion>
+
+  <Accordion title="What if I'm charged but didn't get access?">
+    Check your subscription status at `/dashboard`. If still showing inactive after 24 hours, contact support with your payment ID. We'll investigate and activate manually if needed.
+  </Accordion>
+
+  <Accordion title="Can I change payment method after subscribing?">
+    Subscriptions don't auto-renew, so you can use a different payment method when you renew next month. There's no recurring charge to change.
+  </Accordion>
+
+  <Accordion title="Do you store my credit card?">
+    No. Card details are entered on MercadoPago or Wompi's secure forms. JCV Fitness never sees or stores your full card number.
+  </Accordion>
+</AccordionGroup>
+
+## Getting Payment Help
+
+For payment-related issues:
+
+- **WhatsApp (fastest):** 314 382 64 30
+- **Email:** Through dashboard support form
+- **Payment Gateway Support:**
+  - MercadoPago: https://www.mercadopago.com.co/ayuda
+  - Wompi: https://docs.wompi.co/
+
+**Have ready:**
+- Payment ID or transaction reference
+- Plan you're trying to purchase
+- Payment method used
+- Error message screenshot (if applicable)
+
+---
+
+**Related Guides:**
+- [Creating Your Fitness Plan](/guides/creating-plan)
+- [Managing Your Subscription](/guides/managing-subscription)
+- [Downloading Your Plans](/guides/downloading-plans)

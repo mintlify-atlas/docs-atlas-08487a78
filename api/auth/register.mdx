@@ -1,0 +1,260 @@
+---
+title: 'User Registration'
+description: 'Create a new user account with email and password'
+---
+
+## Overview
+
+The registration endpoint creates a new user account using Supabase Auth. Upon successful registration, a user profile is automatically created via database trigger, and a confirmation email is sent to verify the email address.
+
+<Note>
+  Users must confirm their email address before they can log in. The confirmation link is sent to the provided email.
+</Note>
+
+## Endpoint
+
+```
+POST /api/auth/register
+```
+
+## Authentication
+
+This endpoint does not require authentication.
+
+## Request Body
+
+<ParamField body="email" type="string" required>
+  User's email address. Must be a valid email format.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password. Must be at least 6 characters long.
+</ParamField>
+
+<ParamField body="fullName" type="string">
+  User's full name. Optional but recommended for better user experience.
+</ParamField>
+
+<ParamField body="confirmPassword" type="string" required>
+  Password confirmation. Must match the password field.
+</ParamField>
+
+## Response
+
+<ResponseField name="user" type="object">
+  The created user object from Supabase Auth.
+  
+  <Expandable title="User Object">
+    <ResponseField name="id" type="string">
+      Unique user ID (UUID)
+    </ResponseField>
+    
+    <ResponseField name="email" type="string">
+      User's email address
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string">
+      Timestamp of account creation (ISO 8601)
+    </ResponseField>
+    
+    <ResponseField name="confirmed_at" type="string | null">
+      Timestamp of email confirmation (null until confirmed)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="profile" type="object">
+  The automatically created user profile.
+  
+  <Expandable title="Profile Object">
+    <ResponseField name="id" type="string">
+      Profile ID (matches user ID)
+    </ResponseField>
+    
+    <ResponseField name="email" type="string">
+      User's email address
+    </ResponseField>
+    
+    <ResponseField name="full_name" type="string | null">
+      User's full name if provided
+    </ResponseField>
+    
+    <ResponseField name="has_active_subscription" type="boolean">
+      Whether user has an active subscription (false for new users)
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string">
+      Profile creation timestamp
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Request Example
+
+```bash cURL
+curl -X POST https://jcv24fitness.com/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "securePassword123",
+    "confirmPassword": "securePassword123",
+    "fullName": "Juan Carlos Varela"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://jcv24fitness.com/api/auth/register', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'securePassword123',
+    confirmPassword: 'securePassword123',
+    fullName: 'Juan Carlos Varela'
+  })
+});
+
+const data = await response.json();
+```
+
+## Response Example
+
+<CodeGroup>
+
+```json 200 - Success
+{
+  "user": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "email": "user@example.com",
+    "created_at": "2026-03-01T12:34:56.789Z",
+    "confirmed_at": null,
+    "email_confirmed_at": null
+  },
+  "profile": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "email": "user@example.com",
+    "full_name": "Juan Carlos Varela",
+    "has_active_subscription": false,
+    "current_plan": null,
+    "subscription_end_date": null,
+    "created_at": "2026-03-01T12:34:56.789Z",
+    "updated_at": "2026-03-01T12:34:56.789Z"
+  }
+}
+```
+
+```json 400 - Validation Error
+{
+  "error": {
+    "message": "Password must be at least 6 characters long",
+    "code": "VALIDATION_ERROR"
+  }
+}
+```
+
+```json 409 - Email Already Exists
+{
+  "error": {
+    "message": "User already registered",
+    "code": "EMAIL_EXISTS"
+  }
+}
+```
+
+```json 422 - Passwords Don't Match
+{
+  "error": {
+    "message": "Passwords do not match",
+    "code": "PASSWORD_MISMATCH"
+  }
+}
+```
+
+</CodeGroup>
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| `VALIDATION_ERROR` | Invalid input data (e.g., invalid email format, password too short) |
+| `EMAIL_EXISTS` | An account with this email already exists |
+| `PASSWORD_MISMATCH` | Password and confirmPassword fields do not match |
+| `SUPABASE_ERROR` | Internal error from Supabase Auth service |
+
+## Implementation Details
+
+### Authentication Flow
+
+1. Client submits registration form with email, password, and optional full name
+2. Frontend validates password length (min 6 chars) and password confirmation match
+3. Supabase Auth creates user account in `auth.users` table
+4. Database trigger (`handle_new_user`) automatically creates profile in `profiles` table
+5. Supabase sends confirmation email to user
+6. User clicks confirmation link to activate account
+7. User can now log in with their credentials
+
+### Database Trigger
+
+The `handle_new_user()` trigger function automatically creates a profile when a new user is created:
+
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name')
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+### Email Confirmation
+
+Supabase automatically sends a confirmation email with a magic link. The link redirects to:
+
+```
+https://jcv24fitness.com/auth/callback?token=...&type=signup
+```
+
+The callback page handles the token verification and redirects to the dashboard.
+
+## Frontend Integration
+
+The registration form is implemented in the `RegisterForm` component:
+
+```typescript
+import { useAuth } from '@/features/auth';
+
+function RegisterForm() {
+  const { signUp } = useAuth();
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const { error, user } = await signUp(email, password, fullName);
+    
+    if (error) {
+      // Handle error
+      setError(error.message);
+      return;
+    }
+    
+    // Show success message - check email for confirmation
+  };
+}
+```
+
+<Info>
+  The `useAuth` hook internally calls `supabase.auth.signUp()` which handles the API communication with Supabase.
+</Info>
+
+## Related Endpoints
+
+- [Login](/api/auth/login) - Authenticate existing users
+- [Logout](/api/auth/logout) - End user session

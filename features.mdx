@@ -1,0 +1,847 @@
+---
+title: Key Features
+description: Comprehensive overview of JCV Fitness platform features and capabilities
+---
+
+## Platform Overview
+
+JCV Fitness combines intelligent personalization, comprehensive exercise and nutrition databases, and modern subscription management into a seamless fitness platform. Here's everything you need to know about what makes JCV Fitness powerful.
+
+<Note>
+  All features are built with Next.js 16, React 19, and TypeScript, ensuring a fast, type-safe, and modern user experience.
+</Note>
+
+## Core Features
+
+<CardGroup cols={2}>
+  <Card title="Interactive Workout Wizard" icon="wand-magic-sparkles" href="#workout-wizard">
+    9-step personalization engine for creating custom fitness plans
+  </Card>
+  <Card title="Meal Planning System" icon="utensils" href="#meal-planning">
+    Personalized nutrition plans with food exchange tables
+  </Card>
+  <Card title="Subscription Management" icon="credit-card" href="#subscription-system">
+    Multi-tier pricing with MercadoPago payment integration
+  </Card>
+  <Card title="Exercise Library" icon="dumbbell" href="#exercise-library">
+    100+ exercises with form videos and alternatives
+  </Card>
+  <Card title="Secure Authentication" icon="shield-check" href="#authentication">
+    Supabase-powered auth with magic links and row-level security
+  </Card>
+  <Card title="PDF Generation" icon="file-pdf" href="#pdf-downloads">
+    Downloadable plans with personalized watermarks
+  </Card>
+</CardGroup>
+
+---
+
+## Interactive Workout Wizard
+
+Our signature 9-step wizard collects comprehensive information to generate truly personalized fitness programs.
+
+### How It Works
+
+The wizard is built with Zustand for state management, ensuring smooth transitions and data persistence:
+
+```typescript
+// Wizard state is managed with Zustand
+import { useWizardStore } from '@/features/wizard/store/wizard-store';
+
+const { 
+  currentStep,
+  level,
+  goal, 
+  timeAvailable,
+  equipment,
+  setLevel,
+  nextStep,
+  prevStep 
+} = useWizardStore();
+```
+
+### Step Breakdown
+
+<Steps>
+  <Step title="Step 1: Training Level">
+    **Purpose**: Determines exercise complexity and progression speed
+    
+    Options:
+    - Principiante (Beginner) - < 3 months experience
+    - Básico (Basic) - 3-6 months experience  
+    - Intermedio (Intermediate) - 6-18 months experience
+    - Avanzado (Advanced) - 2+ years experience
+    - Elite - 4+ years competitive experience
+    
+    **Impact on Plan**:
+    - Beginners get simpler exercises with detailed form cues
+    - Advanced users get complex compound movements and periodization
+    - Elite athletes receive sport-specific programming
+  </Step>
+  
+  <Step title="Step 2: Training Goal">
+    **Purpose**: Defines program structure and exercise selection
+    
+    Eight specialized goals:
+    - 🔥 **Quemar Grasa** - Fat loss with metabolic conditioning
+    - 💪 **Ganar Musculo** - Hypertrophy focus with progressive overload
+    - ✨ **Tonificar** - Body recomposition and definition
+    - 🏃 **Resistencia** - Cardiovascular endurance and stamina
+    - 🧘 **Flexibilidad** - Mobility and injury prevention
+    - 🏋️ **Fuerza Pura** - Powerlifting-style strength training
+    - ⚡ **Más Energía** - General fitness and vitality
+    - ❤️ **Salud General** - Holistic health and wellness
+    
+    **Impact on Plan**:
+    - Fat loss gets HIIT and circuit training
+    - Muscle gain gets 8-12 rep ranges with higher volume
+    - Strength gets 1-5 rep ranges with longer rest periods
+  </Step>
+  
+  <Step title="Step 3: Time Availability">
+    **Purpose**: Creates realistic training schedules
+    
+    Options:
+    - 2-3 days/week - Full body splits
+    - 4-5 days/week - Upper/lower or push/pull/legs
+    - 6-7 days/week - Body part splits or specialized programs
+    
+    **Impact on Plan**:
+    - Lower frequency gets more exercises per session
+    - Higher frequency allows targeted muscle group focus
+    - Rest days are strategically placed for recovery
+  </Step>
+  
+  <Step title="Step 4: Equipment Access">
+    **Purpose**: Ensures all exercises are performable
+    
+    Options:
+    - Casa (Home) - Bodyweight, bands, dumbbells
+    - Gimnasio (Gym) - Full equipment access
+    - Ambos (Both) - Hybrid programming
+    
+    **Impact on Plan**:
+    - Home plans use progressive calisthenics
+    - Gym plans leverage barbells and machines
+    - Hybrid plans offer location flexibility
+  </Step>
+  
+  <Step title="Step 5: Workout Duration">
+    **Purpose**: Fits training into your schedule
+    
+    Options:
+    - 20-30 minutes - Condensed, efficient workouts
+    - 45-60 minutes - Standard training sessions
+    - 60-90 minutes - Extended, high-volume training
+    
+    **Impact on Plan**:
+    - Shorter sessions use supersets and circuits
+    - Longer sessions allow traditional straight sets
+    - Warm-up and cool-down scale with duration
+  </Step>
+  
+  <Step title="Step 6: Body Measurements">
+    **Purpose**: Calculates nutritional needs and tracks progress
+    
+    Collected data:
+    - Age (affects metabolism calculations)
+    - Current weight (in kg)
+    - Height (in cm)
+    - Target weight (optional)
+    - Body fat percentage (optional)
+    
+    **Impact on Plan**:
+    - Determines caloric needs using Harris-Benedict equation
+    - Influences macronutrient ratios
+    - Establishes baseline for progress tracking
+  </Step>
+  
+  <Step title="Step 7: Exercise Preferences">
+    **Purpose**: Personalizes exercise selection
+    
+    Features:
+    - Browse 100+ exercise library
+    - Mark exercises to avoid (injuries/limitations)
+    - Star favorite exercises to prioritize
+    - Filter by muscle group and equipment
+    
+    **Impact on Plan**:
+    - Avoided exercises are never included
+    - Favorites appear more frequently
+    - Alternatives are provided for variety
+  </Step>
+  
+  <Step title="Step 8: Food Preferences">
+    **Purpose**: Creates enjoyable, sustainable meal plans
+    
+    Collected information:
+    - Dietary restrictions (vegetarian, vegan, pescatarian, etc.)
+    - Allergies and intolerances
+    - Disliked foods to exclude
+    - Meal frequency preference (3-6 meals/day)
+    - Cooking time availability
+    
+    **Impact on Plan**:
+    - Only includes foods you can and will eat
+    - Respects ethical/religious dietary choices
+    - Adjusts meal timing to your schedule
+  </Step>
+  
+  <Step title="Step 9: Review Summary">
+    **Purpose**: Final verification before plan generation
+    
+    Shows:
+    - All selections from previous steps
+    - Estimated plan characteristics
+    - Option to edit any previous step
+    - Plan generation confirmation
+    
+    **Action**:
+    - Saves wizard data to `wizard_data` table
+    - Generates personalized plan
+    - Redirects to subscription selection
+  </Step>
+</Steps>
+
+### Technical Implementation
+
+The wizard uses modern React patterns for optimal performance:
+
+```tsx
+// Each step is a separate component
+export function StepLevel() {
+  const { level, setLevel, nextStep, canProceed } = useWizardStore();
+
+  const handleSelect = (value: TrainingLevel) => {
+    setLevel(value);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+          ¿Cuál es tu nivel de entrenamiento?
+        </h2>
+        <p className="text-gray-400">
+          Selecciona el nivel que mejor describe tu experiencia actual
+        </p>
+      </div>
+      {/* Option cards */}
+      <NavigationButtons
+        onNext={nextStep}
+        canProceed={canProceed()}
+        isFirstStep
+      />
+    </div>
+  );
+}
+```
+
+---
+
+## Meal Planning System
+
+Personalized nutrition plans are generated based on your body measurements, goals, and food preferences.
+
+### Components
+
+<CardGroup cols={2}>
+  <Card title="Daily Meal Plans" icon="calendar-day">
+    Structured meals for breakfast, lunch, dinner, and snacks
+  </Card>
+  <Card title="Food Exchange Tables" icon="arrows-rotate">
+    Swap foods within categories while maintaining macros
+  </Card>
+  <Card title="Macro Breakdown" icon="chart-pie">
+    Protein, carbs, fats, and calorie targets
+  </Card>
+  <Card title="Portion Guidance" icon="scale-balanced">
+    Exact measurements for each food item
+  </Card>
+</CardGroup>
+
+### Meal Plan Structure
+
+Meal plans are organized by phase and day:
+
+```typescript
+// Meal plan data structure
+import { mealPlanPhase1 } from '@/features/meal-plan/data/meal-plan-phase1';
+
+{
+  phase: 1,
+  name: "Fase de Adaptación",
+  duration: "Semanas 1-4",
+  description: "Establecer hábitos alimenticios saludables",
+  macros: {
+    calories: 2000,
+    protein: 150,
+    carbs: 200,
+    fats: 65
+  },
+  meals: [
+    {
+      time: "7:00 AM",
+      name: "Desayuno",
+      foods: [...],
+      calories: 450,
+      protein: 35,
+      carbs: 45,
+      fats: 15
+    },
+    // ... more meals
+  ]
+}
+```
+
+### Food Exchange System
+
+Users can substitute foods within the same category:
+
+```typescript
+// Food exchange groups
+import { foodExchanges } from '@/features/meal-plan/data/food-exchanges';
+
+{
+  category: "Proteínas",
+  exchanges: [
+    { food: "Pechuga de pollo", amount: "100g", protein: 31, carbs: 0, fats: 3.6 },
+    { food: "Pescado blanco", amount: "100g", protein: 20, carbs: 0, fats: 1.5 },
+    { food: "Huevos enteros", amount: "2 unidades", protein: 13, carbs: 1, fats: 10 },
+    // ... more exchanges
+  ]
+}
+```
+
+<Note>
+  Food exchanges maintain equivalent macronutrient profiles, allowing meal variety without recalculating your entire plan.
+</Note>
+
+---
+
+## Subscription System
+
+Flexible multi-tier subscription model with secure payment processing.
+
+### Available Plans
+
+<Tabs>
+  <Tab title="Básico">
+    **$49,900 COP/month**
+    
+    Entry-level plan includes:
+    - 7-day meal plan template
+    - Home workout routine  
+    - Basic app access
+    - Email support
+    - Plan downloads (with watermark)
+    
+    ```typescript
+    {
+      id: "PLAN_BASICO",
+      name: "Basico",
+      durationMonths: 1,
+      price: 49900,
+      features: [
+        "Plan de alimentacion 7 dias",
+        "Rutina de entrenamiento casa",
+        "Acceso a la app",
+        "Soporte por email"
+      ]
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Pro">
+    **$89,900 COP/month** (Most Popular)
+    
+    Enhanced features:
+    - Fully personalized meal plan
+    - Gym + home routine options
+    - Exercise form videos
+    - Priority support
+    - Weekly progress tracking
+    - Plan regeneration
+    
+    ```typescript
+    {
+      id: "PLAN_PRO",
+      name: "Pro",
+      durationMonths: 1,
+      price: 89900,
+      features: [
+        "Plan de alimentacion personalizado",
+        "Rutina gimnasio + casa",
+        "Videos de ejercicios",
+        "Soporte prioritario",
+        "Seguimiento semanal"
+      ],
+      popular: true
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Premium">
+    **$149,900 COP/month**
+    
+    Maximum results package:
+    - Everything in Pro
+    - 1-on-1 coaching sessions
+    - Monthly plan adjustments
+    - VIP community access
+    - Form check reviews
+    - Results guarantee
+    
+    ```typescript
+    {
+      id: "PLAN_PREMIUM",
+      name: "Premium",
+      durationMonths: 1,
+      price: 149900,
+      features: [
+        "Todo lo del plan Pro",
+        "Coaching 1 a 1",
+        "Ajustes mensuales",
+        "Acceso a comunidad VIP",
+        "Garantia de resultados"
+      ]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Payment Integration
+
+JCV Fitness uses MercadoPago for secure payment processing:
+
+```typescript
+// Create payment preference
+POST /api/payment/mercadopago/create-preference
+
+{
+  "title": "Suscripción Pro - JCV Fitness",
+  "unit_price": 89900,
+  "quantity": 1,
+  "currency_id": "COP",
+  "payer": {
+    "email": "user@example.com"
+  },
+  "external_reference": "user-uuid-PLAN_PRO"
+}
+```
+
+### Webhook Processing
+
+Payment confirmations are processed via Cloudflare Workers:
+
+```typescript
+// Webhook endpoint at mercadopago-jcv.fagal142010.workers.dev
+POST /webhook/mercadopago
+
+// Validates payment and updates subscription status
+// Logs all webhooks to webhook_logs table
+// Updates subscriptions table with new status
+// Triggers subscription_audit_log entry
+```
+
+<Warning>
+  Webhook processing is asynchronous. Subscription activation may take 1-2 minutes after successful payment.
+</Warning>
+
+---
+
+## Exercise Library
+
+100+ exercises with comprehensive details and video demonstrations.
+
+### Exercise Categories
+
+- **Push Exercises** - Chest, shoulders, triceps
+- **Pull Exercises** - Back, biceps, rear delts
+- **Leg Exercises** - Quads, hamstrings, glutes, calves
+- **Core Exercises** - Abs, obliques, lower back
+- **Cardio** - HIIT, steady state, conditioning
+- **Mobility** - Stretching, flexibility, warm-ups
+
+### Exercise Data Structure
+
+```typescript
+interface Exercise {
+  id: string;
+  name: string;
+  category: string;
+  muscleGroups: string[];
+  equipment: string[];
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'elite';
+  videoUrl?: string;
+  instructions: string[];
+  commonMistakes: string[];
+  alternatives: string[];
+}
+```
+
+### Exercise Videos
+
+Pro and Premium subscribers get access to:
+- Proper form demonstrations
+- Common mistake corrections
+- Progression and regression videos
+- Muscle activation cues
+
+Videos are hosted and accessible at `/videos`.
+
+---
+
+## Authentication System
+
+Secure authentication powered by Supabase with multiple sign-in methods.
+
+### Authentication Methods
+
+<Tabs>
+  <Tab title="Email & Password">
+    Traditional authentication with email verification:
+    
+    ```typescript
+    const { signUp } = useAuth();
+    
+    await signUp(email, password, fullName);
+    // User receives verification email
+    // Must verify before accessing protected features
+    ```
+  </Tab>
+  
+  <Tab title="Magic Link">
+    Passwordless authentication via email:
+    
+    ```typescript
+    const { signInWithMagicLink } = useAuth();
+    
+    await signInWithMagicLink(email);
+    // User receives email with one-time login link
+    // Clicking link automatically logs them in
+    ```
+  </Tab>
+  
+  <Tab title="Password Reset">
+    Secure password recovery:
+    
+    ```typescript
+    const { resetPassword } = useAuth();
+    
+    await resetPassword(email);
+    // User receives reset link
+    // Redirects to /auth/reset-password to set new password
+    ```
+  </Tab>
+</Tabs>
+
+### Authentication Context
+
+The auth system uses React Context for global state:
+
+```typescript
+// Access auth state anywhere
+import { useAuth } from '@/features/auth';
+
+const { 
+  user,
+  session,
+  profile,
+  isAuthenticated,
+  isLoading,
+  signIn,
+  signOut 
+} = useAuth();
+```
+
+### Row-Level Security
+
+All database access is protected by Supabase RLS policies:
+
+```sql
+-- Users can only read their own data
+CREATE POLICY "Users can read own profile"
+  ON profiles FOR SELECT
+  USING (auth.uid() = id);
+
+-- Users can only update their own plans
+CREATE POLICY "Users can update own plans"
+  ON user_plans FOR UPDATE
+  USING (auth.uid() = user_id);
+```
+
+<Note>
+  Row-level security ensures users can never access another user's workout plans, meal plans, or subscription information - even if they try to manipulate API requests.
+</Note>
+
+### Protected Routes
+
+Pages requiring authentication use the `ProtectedRoute` component:
+
+```typescript
+import { ProtectedRoute } from '@/features/auth';
+
+export default function DashboardPage() {
+  return (
+    <ProtectedRoute>
+      {/* Dashboard content only shown to authenticated users */}
+    </ProtectedRoute>
+  );
+}
+```
+
+---
+
+## PDF Generation
+
+Download personalized plans with user-specific watermarks to prevent unauthorized sharing.
+
+### Available Downloads
+
+- **Workout Plans** - Complete training program with all exercises
+- **Meal Plans** - Nutrition program with recipes and portions
+- **Exercise Library** - Reference guide for all exercises
+- **Food Exchange Tables** - Meal substitution guide
+
+### PDF Features
+
+<CardGroup cols={2}>
+  <Card title="Personalized Watermarks" icon="fingerprint">
+    Each PDF includes the user's name to prevent sharing
+  </Card>
+  <Card title="Professional Formatting" icon="file-lines">
+    Clean, printer-friendly layout
+  </Card>
+  <Card title="Offline Access" icon="download">
+    View plans without internet connection
+  </Card>
+  <Card title="Download Tracking" icon="chart-line">
+    Track downloads in plan_downloads table
+  </Card>
+</CardGroup>
+
+### Download Process
+
+```typescript
+// Generate PDF with watermark
+POST /api/plan/generate-pdf
+
+{
+  "userId": "user-uuid",
+  "planType": "workout",
+  "includeExerciseLibrary": true,
+  "watermark": true
+}
+
+// Response includes download URL
+{
+  "url": "https://storage.example.com/plans/user-uuid-workout.pdf",
+  "expiresAt": "2026-03-08T00:00:00Z"
+}
+```
+
+### Download Limits
+
+- **Básico**: 5 downloads per month
+- **Pro**: 15 downloads per month  
+- **Premium**: Unlimited downloads
+
+Downloads are tracked in the `plan_downloads` table:
+
+```typescript
+interface PlanDownload {
+  id: string;
+  user_id: string;
+  plan_type: 'workout' | 'meal' | 'both';
+  downloaded_at: string;
+  ip_address?: string;
+}
+```
+
+---
+
+## User Dashboard
+
+Centralized hub for managing your fitness journey at `/dashboard`.
+
+### Dashboard Components
+
+<AccordionGroup>
+  <Accordion title="Plan Status Card" icon="clipboard-check">
+    Shows current fitness plan information:
+    - Plan creation date
+    - Days since plan started
+    - Progress percentage
+    - Quick links to workout and meal plans
+    
+    ```tsx
+    import { PlanStatusCard } from '@/features/plans/components/PlanStatusCard';
+    ```
+  </Accordion>
+  
+  <Accordion title="Subscription Card" icon="credit-card">
+    Displays subscription details:
+    - Current plan tier (Básico/Pro/Premium)
+    - Next renewal date
+    - Payment method on file
+    - Upgrade/downgrade buttons
+    - Cancel subscription option
+    
+    ```tsx
+    import { SubscriptionCard } from '@/features/dashboard';
+    ```
+  </Accordion>
+  
+  <Accordion title="Quick Actions" icon="bolt">
+    Fast access to common tasks:
+    - Create new workout plan
+    - Regenerate meal plan
+    - Download PDF
+    - View exercise videos
+    - Browse food exchanges
+    
+    ```tsx
+    import { QuickActions } from '@/features/dashboard';
+    ```
+  </Accordion>
+  
+  <Accordion title="User Profile" icon="user">
+    Account information and settings:
+    - Name and email
+    - Account creation date
+    - Profile photo upload
+    - Edit profile button
+    
+    ```tsx
+    import { UserProfile } from '@/features/dashboard';
+    ```
+  </Accordion>
+  
+  <Accordion title="Video Tutorials" icon="video">
+    Educational content library:
+    - Platform walkthrough videos
+    - Exercise technique guides
+    - Meal prep tutorials
+    - FAQ videos
+    
+    ```tsx
+    import { VideoTutorials } from '@/features/dashboard';
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Additional Features
+
+### Freemium Model
+
+New users get access to 5-week trial plans before subscribing:
+
+- Complete the wizard without payment
+- View sample workout and meal plans
+- Limited feature access
+- Upgrade anytime to unlock full features
+
+### WhatsApp Support
+
+Direct support channel at [+57 314 382 6430](https://wa.me/573143826430):
+
+- Quick response times
+- Personalized guidance
+- Technical support
+- Coaching questions (Premium only)
+
+### Progress Tracking
+
+Track your fitness journey over time:
+
+- Weight and body measurement logging
+- Workout performance tracking
+- Before/after photo comparisons
+- Progress charts and graphs
+
+### Community Features (Premium)
+
+Premium subscribers get VIP community access:
+
+- Private Discord/Telegram group
+- Weekly Q&A sessions
+- Recipe sharing
+- Motivation and accountability
+
+---
+
+## Technical Specifications
+
+### Frontend Stack
+
+```json
+{
+  "framework": "Next.js 16",
+  "ui-library": "React 19",
+  "language": "TypeScript",
+  "styling": "Tailwind CSS 4",
+  "state-management": "Zustand 5",
+  "deployment": "Cloudflare Pages"
+}
+```
+
+### Backend Services
+
+```json
+{
+  "authentication": "Supabase Auth",
+  "database": "Supabase (PostgreSQL)",
+  "storage": "Supabase Storage",
+  "payments": "MercadoPago",
+  "webhooks": "Cloudflare Workers",
+  "email": "Supabase Email"
+}
+```
+
+### Database Tables
+
+- `profiles` - User profile information
+- `subscriptions` - Active subscription records
+- `wizard_data` - Saved wizard responses
+- `user_plans` - Generated fitness plans
+- `plan_downloads` - Download tracking
+- `webhook_logs` - Payment webhook history
+- `subscription_audit_log` - Subscription change history
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Create Your Plan"
+    icon="play"
+    href="/quickstart"
+  >
+    Follow the quickstart guide to create your first personalized plan
+  </Card>
+  <Card
+    title="Technical Documentation"
+    icon="code"
+    href="/technical/architecture"
+  >
+    Deep dive into system architecture and implementation
+  </Card>
+  <Card
+    title="API Reference"
+    icon="book-open"
+    href="/api/auth/register"
+  >
+    Complete API documentation for developers
+  </Card>
+  <Card
+    title="User Guides"
+    icon="map"
+    href="/guides/creating-plan"
+  >
+    Step-by-step guides for all platform features
+  </Card>
+</CardGroup>

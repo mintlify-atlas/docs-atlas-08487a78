@@ -1,0 +1,484 @@
+---
+title: "Meal Planning"
+description: "Comprehensive meal planning system with food exchanges, phase-based nutrition, and personalized daily meal schedules"
+---
+
+# Meal Planning
+
+JCV Fitness provides structured meal plans with detailed food exchanges, allowing users to customize their nutrition while maintaining macro balance. The system uses phase-based meal plans that adapt to user goals.
+
+## Overview
+
+The meal planning feature includes:
+
+- **Pre-built meal templates** for different phases (adaptation, growth, etc.)
+- **7-day meal cycles** with 5 meals per day
+- **Food exchange system** for flexible substitutions
+- **Portion sizes** in grams with alternative units
+- **Meal timing guidance** for optimal results
+- **Macro tracking** per meal and per day
+
+## Architecture
+
+### Core Types
+
+```typescript
+// src/features/meal-plan/types/index.ts
+
+export interface FoodItem {
+  name: string;           // "Pechuga de pollo"
+  grams: number;          // 100
+  unit?: string;          // "1 porción" (optional display)
+}
+
+export interface Meal {
+  id: string;             // "d1m1" (day 1, meal 1)
+  name: string;           // "Desayuno"
+  time: string;           // "7:00 AM"
+  foods: FoodItem[];      // List of foods
+  notes?: string;         // Optional preparation notes
+}
+
+export interface DayPlan {
+  day: number;            // 1-7
+  dayName: string;        // "Lunes"
+  meals: Meal[];          // 5 meals per day
+}
+
+export interface MealPlanConfig {
+  phase: number;          // Phase number (1, 2, 3, etc.)
+  phaseName: string;      // "Fase de Adaptación"
+  duration: string;       // "4 semanas"
+  dailyMeals: number;     // 5
+  days: DayPlan[];        // 7 days
+  exchanges: FoodExchange[];  // Food substitution options
+}
+```
+
+### Food Exchange System
+
+Allows users to swap foods while maintaining nutritional balance:
+
+```typescript
+export interface FoodExchange {
+  category: "protein" | "carbs" | "fats" | "vegetables";
+  name: string;           // "Pechuga de pollo"
+  equivalentGrams: number;  // 100g
+  baseFood: string;       // What it can replace
+}
+```
+
+## Phase 1: Adaptation Meal Plan
+
+The default meal plan focuses on adaptation and establishing healthy eating patterns.
+
+### Configuration
+
+```typescript
+// src/features/meal-plan/data/meal-plan-phase1.ts
+export const mealPlanPhase1: MealPlanConfig = {
+  phase: 1,
+  phaseName: "Fase de Adaptación",
+  duration: "4 semanas",
+  dailyMeals: 5,
+  exchanges: allExchanges,
+  days: [
+    // 7 days of detailed meal plans
+  ]
+};
+```
+
+### Sample Day (Monday)
+
+<Tabs>
+  <Tab title="Desayuno (7:00 AM)">
+    ```typescript
+    {
+      id: "d1m1",
+      name: "Desayuno",
+      time: "7:00 AM",
+      foods: [
+        { name: "Claras de huevo", grams: 150 },
+        { name: "Huevo entero", grams: 50, unit: "1 unidad" },
+        { name: "Avena en hojuelas", grams: 40 },
+        { name: "Banano", grams: 100 },
+      ],
+      notes: "Preparar las claras revueltas o en tortilla con el huevo entero"
+    }
+    ```
+    
+    **Nutrition Focus**: High protein breakfast with complex carbs for sustained energy.
+  </Tab>
+  
+  <Tab title="Media Mañana (10:00 AM)">
+    ```typescript
+    {
+      id: "d1m2",
+      name: "Media Mañana",
+      time: "10:00 AM",
+      foods: [
+        { name: "Pechuga de pollo", grams: 100 },
+        { name: "Arroz blanco", grams: 80 },
+        { name: "Vegetales mixtos", grams: 100 },
+      ],
+    }
+    ```
+    
+    **Nutrition Focus**: Balanced meal with lean protein and moderate carbs.
+  </Tab>
+  
+  <Tab title="Almuerzo (1:00 PM)">
+    ```typescript
+    {
+      id: "d1m3",
+      name: "Almuerzo",
+      time: "1:00 PM",
+      foods: [
+        { name: "Carne de res magra", grams: 120 },
+        { name: "Papa cocida", grams: 150 },
+        { name: "Ensalada verde", grams: 150 },
+        { name: "Aceite de oliva", grams: 10 },
+      ],
+    }
+    ```
+    
+    **Nutrition Focus**: Main meal with complete protein and starchy carbs.
+  </Tab>
+  
+  <Tab title="Media Tarde (4:00 PM)">
+    ```typescript
+    {
+      id: "d1m4",
+      name: "Media Tarde",
+      time: "4:00 PM",
+      foods: [
+        { name: "Atun en agua", grams: 100 },
+        { name: "Galletas de arroz", grams: 30 },
+        { name: "Aguacate", grams: 50 },
+      ],
+    }
+    ```
+    
+    **Nutrition Focus**: Light protein with healthy fats for satiety.
+  </Tab>
+  
+  <Tab title="Cena (7:00 PM)">
+    ```typescript
+    {
+      id: "d1m5",
+      name: "Cena",
+      time: "7:00 PM",
+      foods: [
+        { name: "Pescado blanco", grams: 150 },
+        { name: "Brocoli al vapor", grams: 150 },
+        { name: "Aceite de oliva", grams: 5 },
+      ],
+      notes: "Última comida del día, evitar carbohidratos simples"
+    }
+    ```
+    
+    **Nutrition Focus**: Lean protein with fibrous vegetables, minimal carbs.
+  </Tab>
+</Tabs>
+
+## Food Exchange Tables
+
+Users can substitute foods while maintaining nutritional equivalence:
+
+### Protein Exchanges
+
+```typescript
+const proteinExchanges: FoodExchange[] = [
+  { category: "protein", name: "Pechuga de pollo", equivalentGrams: 100, baseFood: "Proteína animal" },
+  { category: "protein", name: "Pescado blanco", equivalentGrams: 100, baseFood: "Proteína animal" },
+  { category: "protein", name: "Carne de res magra", equivalentGrams: 100, baseFood: "Proteína animal" },
+  { category: "protein", name: "Claras de huevo", equivalentGrams: 150, baseFood: "Proteína animal" },
+  { category: "protein", name: "Atún en agua", equivalentGrams: 100, baseFood: "Proteína animal" },
+  // ... more proteins
+];
+```
+
+### Carbohydrate Exchanges
+
+```typescript
+const carbExchanges: FoodExchange[] = [
+  { category: "carbs", name: "Arroz blanco", equivalentGrams: 80, baseFood: "Carbohidrato complejo" },
+  { category: "carbs", name: "Arroz integral", equivalentGrams: 80, baseFood: "Carbohidrato complejo" },
+  { category: "carbs", name: "Papa cocida", equivalentGrams: 150, baseFood: "Carbohidrato complejo" },
+  { category: "carbs", name: "Batata", equivalentGrams: 130, baseFood: "Carbohidrato complejo" },
+  { category: "carbs", name: "Avena", equivalentGrams: 40, baseFood: "Carbohidrato complejo" },
+  // ... more carbs
+];
+```
+
+### Fat Exchanges
+
+```typescript
+const fatExchanges: FoodExchange[] = [
+  { category: "fats", name: "Aguacate", equivalentGrams: 50, baseFood: "Grasa saludable" },
+  { category: "fats", name: "Aceite de oliva", equivalentGrams: 10, baseFood: "Grasa saludable" },
+  { category: "fats", name: "Almendras", equivalentGrams: 15, baseFood: "Grasa saludable" },
+  { category: "fats", name: "Nueces", equivalentGrams: 15, baseFood: "Grasa saludable" },
+  // ... more fats
+];
+```
+
+## Components
+
+### Meal Card Component
+
+Displays individual meals with food items and portions:
+
+```tsx
+// src/features/meal-plan/components/MealCard.tsx
+interface MealCardProps {
+  meal: Meal;
+  onEdit?: () => void;
+}
+
+export function MealCard({ meal, onEdit }: MealCardProps) {
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-xl font-bold text-white">{meal.name}</h3>
+          <p className="text-sm text-accent-cyan">{meal.time}</p>
+        </div>
+        {onEdit && (
+          <button onClick={onEdit} className="text-gray-400 hover:text-white">
+            Editar
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {meal.foods.map((food, idx) => (
+          <div key={idx} className="flex justify-between text-sm">
+            <span className="text-gray-300">{food.name}</span>
+            <span className="text-gray-500">
+              {food.unit || `${food.grams}g`}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {meal.notes && (
+        <div className="mt-4 p-3 bg-accent-cyan/10 rounded-lg">
+          <p className="text-xs text-gray-400">{meal.notes}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### Day Plan View
+
+Displays all meals for a single day:
+
+```tsx
+// src/features/meal-plan/components/DayPlanView.tsx
+interface DayPlanViewProps {
+  dayPlan: DayPlan;
+}
+
+export function DayPlanView({ dayPlan }: DayPlanViewProps) {
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-white">
+          Día {dayPlan.day} - {dayPlan.dayName}
+        </h2>
+      </div>
+
+      <div className="grid gap-6">
+        {dayPlan.meals.map((meal) => (
+          <MealCard key={meal.id} meal={meal} />
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+### Week View Component
+
+Navigate through all 7 days of the meal plan:
+
+```tsx
+// src/features/meal-plan/components/MealPlanWeek.tsx
+export function MealPlanWeek({ config }: { config: MealPlanConfig }) {
+  const [selectedDay, setSelectedDay] = useState(0);
+  const currentDayPlan = config.days[selectedDay];
+
+  return (
+    <div className="space-y-8">
+      {/* Phase header */}
+      <div className="text-center">
+        <h1 className="text-3xl font-bold text-white mb-2">
+          {config.phaseName}
+        </h1>
+        <p className="text-gray-400">
+          Duración: {config.duration} | {config.dailyMeals} comidas diarias
+        </p>
+      </div>
+
+      {/* Day selector */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {config.days.map((day, idx) => (
+          <button
+            key={day.day}
+            onClick={() => setSelectedDay(idx)}
+            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
+              selectedDay === idx
+                ? 'bg-accent-cyan text-black'
+                : 'bg-gray-800 text-gray-400 hover:text-white'
+            }`}
+          >
+            {day.dayName}
+          </button>
+        ))}
+      </div>
+
+      {/* Current day meals */}
+      <DayPlanView dayPlan={currentDayPlan} />
+
+      {/* Food exchange guide */}
+      <FoodExchangeTable exchanges={config.exchanges} />
+    </div>
+  );
+}
+```
+
+### Food Exchange Table
+
+Displays substitution options organized by category:
+
+```tsx
+// src/features/meal-plan/components/FoodExchangeTable.tsx
+export function FoodExchangeTable({ exchanges }: { exchanges: FoodExchange[] }) {
+  const categories = {
+    protein: exchanges.filter(e => e.category === 'protein'),
+    carbs: exchanges.filter(e => e.category === 'carbs'),
+    fats: exchanges.filter(e => e.category === 'fats'),
+    vegetables: exchanges.filter(e => e.category === 'vegetables'),
+  };
+
+  return (
+    <div className="bg-gray-950 border border-gray-800 rounded-xl p-6">
+      <h3 className="text-xl font-bold text-white mb-4">
+        Tabla de Intercambios
+      </h3>
+      <p className="text-sm text-gray-400 mb-6">
+        Puedes sustituir alimentos dentro de la misma categoría manteniendo las porciones indicadas
+      </p>
+
+      <Tabs>
+        <Tab title="Proteínas">
+          <ExchangeList items={categories.protein} />
+        </Tab>
+        <Tab title="Carbohidratos">
+          <ExchangeList items={categories.carbs} />
+        </Tab>
+        <Tab title="Grasas">
+          <ExchangeList items={categories.fats} />
+        </Tab>
+        <Tab title="Vegetales">
+          <ExchangeList items={categories.vegetables} />
+        </Tab>
+      </Tabs>
+    </div>
+  );
+}
+```
+
+## Integration with Wizard
+
+Meal plans are generated based on wizard selections:
+
+```typescript
+// Generate meal plan based on user preferences
+function generateMealPlan(wizardData: WizardState): MealPlanConfig {
+  const { goal, userBodyData, selectedFoods } = wizardData;
+  
+  // Start with base phase 1 plan
+  let plan = { ...mealPlanPhase1 };
+  
+  // Filter foods based on user preferences
+  if (selectedFoods.length > 0) {
+    plan = filterMealsByPreferences(plan, selectedFoods);
+  }
+  
+  // Adjust portions based on calorie target
+  if (userBodyData) {
+    const calories = calculateCalories(userBodyData);
+    plan = adjustPortions(plan, calories.target);
+  }
+  
+  return plan;
+}
+```
+
+## Meal Timing Guidelines
+
+Optimal meal timing for different goals:
+
+<CardGroup cols={3}>
+  <Card title="Muscle Gain" icon="dumbbell">
+    - Breakfast: 7:00 AM
+    - Pre-workout: 10:00 AM
+    - Post-workout: 1:00 PM (high carbs)
+    - Afternoon: 4:00 PM
+    - Dinner: 7:00 PM
+  </Card>
+  
+  <Card title="Fat Loss" icon="fire">
+    - Breakfast: 8:00 AM
+    - Mid-morning: 11:00 AM
+    - Lunch: 2:00 PM
+    - Afternoon: 5:00 PM
+    - Dinner: 7:00 PM (low carbs)
+  </Card>
+  
+  <Card title="Maintenance" icon="heart">
+    - Breakfast: 7:00 AM
+    - Snack: 10:00 AM
+    - Lunch: 1:00 PM
+    - Snack: 4:00 PM
+    - Dinner: 7:30 PM
+  </Card>
+</CardGroup>
+
+## Usage Example
+
+```tsx
+import { mealPlanPhase1 } from '@/features/meal-plan/data/meal-plan-phase1';
+import { MealPlanWeek } from '@/features/meal-plan/components';
+
+function MealPlanPage() {
+  return (
+    <div className="container mx-auto py-8">
+      <MealPlanWeek config={mealPlanPhase1} />
+    </div>
+  );
+}
+```
+
+## Best Practices
+
+<Warning>
+  **Medical Disclaimer**: The meal plans are informational guides, not medical or nutritional advice. Users should consult with licensed nutritionists for personalized meal planning.
+</Warning>
+
+<Tip>
+  **Flexibility**: Encourage users to use the food exchange system to maintain adherence. Perfect adherence to exact foods is less important than hitting macro targets.
+</Tip>
+
+<Info>
+  **Hydration**: Remind users to drink 2-3 liters of water daily, distributed throughout the day between meals.
+</Info>
+
+## See Also
+
+- [Workout Wizard](/features/workout-wizard) - How meal plans are personalized from wizard data
+- [Subscription System](/features/subscription-system) - Access control for meal plans

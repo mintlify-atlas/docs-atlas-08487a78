@@ -1,0 +1,676 @@
+---
+title: Deployment Guide
+description: Complete deployment procedures for JCV Fitness including frontend, worker, and database deployment
+---
+
+# Deployment Guide
+
+JCV Fitness uses a multi-component deployment strategy with Cloudflare Pages for the frontend, Cloudflare Workers for payment processing, and Supabase for the database.
+
+## Prerequisites
+
+Before deploying, ensure you have:
+
+- Node.js 20+ installed
+- Git repository access
+- Cloudflare account with Pages and Workers access
+- Supabase project created
+- MercadoPago account with API credentials
+
+## Environment Setup
+
+### 1. Frontend Environment Variables
+
+Create `.env.local` in project root:
+
+```bash
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Optional: Analytics, etc.
+```
+
+**Get Supabase credentials**:
+1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
+2. Select your project
+3. Settings > API
+4. Copy `URL` and `anon/public` key
+
+### 2. Worker Secrets
+
+**Set secrets via Cloudflare Dashboard or CLI**:
+
+```bash
+cd cloudflare-worker
+
+# Production secrets
+wrangler secret put MP_ACCESS_TOKEN
+# Paste your MercadoPago production access token
+
+wrangler secret put SUPABASE_URL
+# Paste: https://xxx.supabase.co
+
+wrangler secret put SUPABASE_SERVICE_KEY
+# Paste your Supabase service_role key (NOT anon key)
+
+wrangler secret put WORKER_URL
+# Paste: https://mercadopago-jcv.fagal142010.workers.dev
+
+# Staging secrets
+wrangler secret put MP_ACCESS_TOKEN --env staging
+wrangler secret put SUPABASE_URL --env staging
+wrangler secret put SUPABASE_SERVICE_KEY --env staging
+wrangler secret put WORKER_URL --env staging
+```
+
+**Get MercadoPago credentials**:
+1. Go to [MercadoPago Developers](https://www.mercadopago.com.co/developers/panel)
+2. Your Applications > Your App
+3. Production credentials > Access Token
+4. Copy token (starts with `APP-`)
+
+## Database Deployment
+
+### 1. Create Supabase Project
+
+```bash
+# Option A: Via Dashboard
+# 1. Go to https://supabase.com/dashboard
+# 2. Click "New Project"
+# 3. Name: "jcv-fitness-production"
+# 4. Database password: (generate strong password)
+# 5. Region: São Paulo (closest to Colombia)
+# 6. Click "Create new project"
+```
+
+### 2. Run Migrations
+
+**Apply schema migrations**:
+
+```bash
+# 1. Copy migration files content
+cat supabase/migrations/001_initial_schema.sql
+cat supabase/migrations/002_user_plans.sql
+
+# 2. Go to Supabase Dashboard > SQL Editor
+# 3. Click "New Query"
+# 4. Paste 001_initial_schema.sql
+# 5. Click "Run"
+# 6. Repeat for 002_user_plans.sql
+```
+
+**Verify migrations**:
+```sql
+-- Check tables exist
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public'
+ORDER BY table_name;
+
+-- Expected output:
+-- plan_downloads
+-- profiles
+-- subscription_audit_log
+-- subscriptions
+-- user_plans
+-- webhook_logs
+-- wizard_data
+```
+
+### 3. Configure Row Level Security
+
+**Verify RLS is enabled**:
+```sql
+SELECT tablename, rowsecurity 
+FROM pg_tables 
+WHERE schemaname = 'public';
+
+-- All tables should show rowsecurity = true
+```
+
+### 4. Set Up Cron Jobs (Optional)
+
+**Create Edge Function for subscription expiration**:
+
+```sql
+-- Run daily at midnight to expire old subscriptions
+SELECT cron.schedule(
+  'expire-subscriptions',
+  '0 0 * * *',  -- Daily at midnight
+  $$
+  SELECT public.expire_old_subscriptions();
+  SELECT public.expire_old_plans();
+  $$
+);
+```
+
+**Or use Supabase Edge Functions**:
+```bash
+# Create edge function
+supabase functions new expire-subscriptions
+
+# Deploy
+supabase functions deploy expire-subscriptions
+
+# Schedule via cron-job.org or similar
+```
+
+## Frontend Deployment (Cloudflare Pages)
+
+### Initial Setup
+
+**Option A: GitHub Integration (Recommended)**
+
+1. **Connect Repository**:
+   - Go to [Cloudflare Dashboard](https://dash.cloudflare.com)
+   - Pages > Create a project
+   - Connect to Git
+   - Select repository: `felixagl/jcv-fitness`
+   - Configure build settings:
+
+```yaml
+Production branch: main
+Build command: npm run build
+Build output directory: out
+Root directory: (leave empty)
+Environment variables:
+  NEXT_PUBLIC_SUPABASE_URL: https://xxx.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJ...
+```
+
+2. **Configure Staging**:
+   - Settings > Builds & deployments
+   - Preview deployments: Enable for `staging` branch
+   - Environment variables (staging):
+     - Use staging Supabase project URL/key
+
+**Option B: Manual Deployment**
+
+```bash
+# Install Wrangler CLI
+npm install -g wrangler
+
+# Login to Cloudflare
+wrangler login
+
+# Build project
+npm run build
+
+# Deploy
+wrangler pages deploy out --project-name=jcv-fitness
+```
+
+### Deployment Workflow
+
+**Git Branch Strategy**:
+```
+main (production)
+  ↑
+  PR from staging
+  ↑
+staging (pre-production)
+  ↑
+  Direct commits or PRs
+  ↑
+feature/* branches (optional)
+```
+
+**Deployment Flow**:
+
+1. **Work on staging**:
+```bash
+git checkout staging
+
+# Make changes
+# ...
+
+# Test locally
+npm run build && npm test
+
+# Commit
+git add <files>
+git commit -m "feat: add new feature"
+
+# Push (auto-deploys to staging.jcv-fitness.pages.dev)
+git push origin staging
+```
+
+2. **Test on staging**:
+   - Visit `https://staging.jcv-fitness.pages.dev`
+   - Verify changes work correctly
+   - Test payment flow with MercadoPago sandbox
+
+3. **Promote to production**:
+```bash
+# Create PR from staging to main
+gh pr create --base main --head staging --title "Release: [date]"
+
+# After approval, merge
+gh pr merge <pr-number> --squash
+
+# Production auto-deploys to jcv24fitness.com
+```
+
+### Custom Domain Setup
+
+**Configure jcv24fitness.com**:
+
+1. **Add custom domain**:
+   - Cloudflare Pages > jcv-fitness > Custom domains
+   - Add domain: `jcv24fitness.com`
+   - Add domain: `www.jcv24fitness.com`
+
+2. **DNS Configuration** (if not using Cloudflare DNS):
+```
+Type: CNAME
+Name: jcv24fitness.com
+Value: jcv-fitness.pages.dev
+
+Type: CNAME
+Name: www
+Value: jcv-fitness.pages.dev
+```
+
+3. **SSL Certificate**:
+   - Cloudflare automatically provisions SSL
+   - Verify HTTPS works: `https://jcv24fitness.com`
+
+## Worker Deployment (Cloudflare Workers)
+
+### Initial Setup
+
+```bash
+cd cloudflare-worker
+
+# Install dependencies
+npm install -g wrangler
+
+# Login to Cloudflare
+wrangler login
+```
+
+### Deploy Worker
+
+**Production**:
+```bash
+# Ensure secrets are set (see Environment Setup)
+wrangler secret list
+
+# Deploy to production
+wrangler deploy
+
+# Worker URL: mercadopago-jcv.fagal142010.workers.dev
+```
+
+**Staging**:
+```bash
+# Set staging secrets first
+wrangler secret put MP_ACCESS_TOKEN --env staging
+wrangler secret put SUPABASE_URL --env staging
+wrangler secret put SUPABASE_SERVICE_KEY --env staging
+
+# Deploy to staging
+wrangler deploy --env staging
+
+# Worker URL: mercadopago-jcv-staging.fagal142010.workers.dev
+```
+
+### Verify Worker Deployment
+
+**Test health endpoint**:
+```bash
+# Production
+curl https://mercadopago-jcv.fagal142010.workers.dev/webhook
+# Expected: {"status":"ok","service":"mercadopago-webhook"}
+
+# Staging
+curl https://mercadopago-jcv-staging.fagal142010.workers.dev/webhook
+```
+
+**Test CORS**:
+```bash
+curl -X OPTIONS https://mercadopago-jcv.fagal142010.workers.dev \
+  -H "Origin: https://jcv24fitness.com" \
+  -H "Access-Control-Request-Method: POST" \
+  -v
+# Should return CORS headers
+```
+
+### Update Worker Code
+
+```bash
+# 1. Make changes to mercadopago-worker.js
+vim mercadopago-worker.js
+
+# 2. Test locally (optional)
+wrangler dev
+
+# 3. Deploy
+wrangler deploy
+
+# 4. Verify in logs
+wrangler tail
+```
+
+## MercadoPago Configuration
+
+### Set Notification URL
+
+**Option A: Via MercadoPago Dashboard**
+
+1. Go to [MercadoPago Developers](https://www.mercadopago.com.co/developers/panel)
+2. Your Applications > Your App
+3. Webhooks
+4. Add URL:
+   - Production: `https://mercadopago-jcv.fagal142010.workers.dev/webhook`
+   - Events: `payment.updated`, `payment.created`
+
+**Option B: Via Preference (Already Configured)**
+
+Worker automatically sets `notification_url` when creating preferences:
+```javascript
+const preferenceData = {
+  // ...
+  notification_url: `${workerUrl}/webhook`,
+};
+```
+
+### Test Payment Flow
+
+**Staging (Sandbox)**:
+
+1. Use test credentials in worker
+2. Create preference via frontend
+3. Use test card:
+   - Card: `5031 7557 3453 0604`
+   - CVV: `123`
+   - Expiry: `11/25`
+4. Verify webhook received in Supabase `webhook_logs`
+5. Verify subscription created
+
+**Production**:
+
+1. Use real card with small amount
+2. Complete payment
+3. Verify subscription activated
+4. Check webhook logs
+
+## Monitoring & Logging
+
+### Frontend Monitoring
+
+**Cloudflare Web Analytics**:
+1. Cloudflare Dashboard > Analytics
+2. Enable Web Analytics
+3. View traffic, performance, errors
+
+**Custom Error Tracking** (Future):
+```typescript
+// Add Sentry or similar
+import * as Sentry from '@sentry/nextjs';
+
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  environment: process.env.NODE_ENV,
+});
+```
+
+### Worker Monitoring
+
+**Real-time logs**:
+```bash
+wrangler tail
+
+# Filter by status
+wrangler tail --status error
+```
+
+**Cloudflare Dashboard**:
+1. Workers & Pages > mercadopago-jcv
+2. Metrics: Requests, errors, CPU time
+3. Logs: Recent invocations
+
+### Database Monitoring
+
+**Supabase Dashboard**:
+1. Project > Database
+2. Metrics: Connections, queries, storage
+3. Query performance
+
+**Custom queries**:
+```sql
+-- Webhook success rate (last 24h)
+SELECT 
+  status,
+  COUNT(*) as count,
+  ROUND(COUNT(*)::numeric / SUM(COUNT(*)) OVER () * 100, 2) as percentage
+FROM webhook_logs
+WHERE received_at > NOW() - INTERVAL '24 hours'
+GROUP BY status;
+
+-- Active subscriptions
+SELECT 
+  plan_type,
+  COUNT(*) as active_count,
+  AVG(EXTRACT(DAY FROM (end_date - NOW()))) as avg_days_remaining
+FROM subscriptions
+WHERE status = 'active'
+GROUP BY plan_type;
+
+-- Today's revenue
+SELECT 
+  SUM(amount_paid) as total_revenue_cents,
+  COUNT(*) as payment_count
+FROM subscriptions
+WHERE created_at::date = CURRENT_DATE;
+```
+
+## Rollback Procedures
+
+### Frontend Rollback
+
+**Cloudflare Pages**:
+1. Dashboard > Pages > jcv-fitness
+2. Deployments tab
+3. Find previous working deployment
+4. Click "..." > Rollback to this deployment
+
+**Git Rollback**:
+```bash
+# Find last good commit
+git log --oneline
+
+# Revert to specific commit
+git revert <commit-hash>
+git push origin main
+```
+
+### Worker Rollback
+
+```bash
+# List recent deployments
+wrangler deployments list
+
+# Rollback to previous version
+wrangler rollback <deployment-id>
+
+# Or redeploy previous version from git
+git checkout <previous-commit>
+cd cloudflare-worker
+wrangler deploy
+```
+
+### Database Rollback
+
+**Restore from backup** (Supabase):
+1. Dashboard > Database > Backups
+2. Select backup date
+3. Click "Restore"
+
+**Migration rollback**:
+```sql
+-- Drop newly added tables/columns
+DROP TABLE IF EXISTS new_table;
+ALTER TABLE existing_table DROP COLUMN IF EXISTS new_column;
+```
+
+## Health Checks
+
+### Automated Health Check Script
+
+```bash
+#!/bin/bash
+# health-check.sh
+
+echo "Checking JCV Fitness health..."
+
+# Check frontend
+if curl -s https://jcv24fitness.com | grep -q "JCV Fitness"; then
+  echo "✅ Frontend: OK"
+else
+  echo "❌ Frontend: DOWN"
+fi
+
+# Check worker
+if curl -s https://mercadopago-jcv.fagal142010.workers.dev/webhook | grep -q "ok"; then
+  echo "✅ Worker: OK"
+else
+  echo "❌ Worker: DOWN"
+fi
+
+# Check Supabase
+if curl -s https://xxx.supabase.co/rest/v1/ -H "apikey: $SUPABASE_ANON_KEY" | grep -q "404"; then
+  echo "✅ Supabase: OK"
+else
+  echo "❌ Supabase: DOWN"
+fi
+```
+
+**Run periodically**:
+```bash
+# Add to crontab (every 5 minutes)
+*/5 * * * * /path/to/health-check.sh
+```
+
+## Troubleshooting
+
+### Build Fails
+
+**Error**: `Type error: ...`
+
+```bash
+# Run type check locally
+npm run build
+
+# Fix type errors
+# Commit and push
+```
+
+**Error**: `Module not found`
+
+```bash
+# Clear cache and reinstall
+rm -rf node_modules package-lock.json
+npm install
+npm run build
+```
+
+### Worker Not Receiving Webhooks
+
+1. **Check MercadoPago notification URL**:
+   - Verify URL is correct
+   - Check URL is reachable: `curl https://worker-url/webhook`
+
+2. **Check worker logs**:
+   ```bash
+   wrangler tail
+   ```
+
+3. **Test webhook manually**:
+   ```bash
+   curl -X POST https://worker-url/webhook \
+     -H "Content-Type: application/json" \
+     -d '{"type":"payment","action":"payment.updated","data":{"id":"123"}}'
+   ```
+
+### Database Connection Issues
+
+**Check Supabase status**: https://status.supabase.com
+
+**Verify credentials**:
+```bash
+curl https://xxx.supabase.co/rest/v1/ \
+  -H "apikey: $SUPABASE_ANON_KEY"
+# Should return 404, not 401
+```
+
+**Check RLS policies**:
+```sql
+-- Verify policies exist
+SELECT * FROM pg_policies WHERE schemaname = 'public';
+```
+
+## CI/CD (Future Enhancement)
+
+### GitHub Actions Workflow
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy
+
+on:
+  push:
+    branches: [main, staging]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: jcv-fitness
+          directory: out
+```
+
+## Security Checklist
+
+**Before Production Deployment**:
+
+- [ ] All secrets stored securely (no commits)
+- [ ] RLS enabled on all Supabase tables
+- [ ] CORS configured with specific origins (no wildcards)
+- [ ] MercadoPago webhook URL uses HTTPS
+- [ ] Service role key only in worker (not client)
+- [ ] Environment variables set in Cloudflare (not in code)
+- [ ] Test payment flow end-to-end
+- [ ] Verify subscription activation works
+- [ ] Check webhook logs for errors
+
+## Related Documentation
+
+- [System Architecture](/technical/architecture) - Overall system design
+- [Database Schema](/technical/database-schema) - Database structure
+- [Payment Integration](/technical/payment-integration) - Payment flow details

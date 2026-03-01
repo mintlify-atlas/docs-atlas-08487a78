@@ -1,0 +1,262 @@
+---
+title: "Project Structure"
+description: "Understanding the JCV Fitness codebase organization and architecture"
+---
+
+JCV Fitness follows a **feature-based architecture** that groups related functionality together. This organizational pattern makes the codebase more maintainable and easier to navigate.
+
+## Tech Stack
+
+The project uses modern web technologies:
+
+- **Frontend**: Next.js 16, React 19, TypeScript
+- **Styling**: Tailwind CSS 4
+- **State Management**: Zustand 5
+- **Backend**: Supabase (Auth, Database, Edge Functions)
+- **Payments**: MercadoPago (primary), Wompi (future)
+- **Hosting**: Cloudflare Pages (static export)
+- **Worker**: Cloudflare Workers (webhook handling)
+- **Testing**: Vitest with React Testing Library
+
+## Root Directory Structure
+
+```
+jcv-fitness/
+├── src/                    # Source code
+├── cloudflare-worker/      # MercadoPago webhook worker
+├── supabase/              # Supabase migrations and functions
+├── docs/                  # Documentation (PRD, specs)
+├── openspec/              # Feature specifications
+├── public/                # Static assets
+├── package.json           # Dependencies and scripts
+├── vitest.config.ts       # Test configuration
+├── next.config.js         # Next.js configuration
+└── CLAUDE.md              # Development guidelines
+```
+
+## Source Directory (`src/`)
+
+The `src/` directory is organized into several key areas:
+
+### App Directory (`src/app/`)
+
+Next.js 16 App Router structure with file-based routing:
+
+```
+src/app/
+├── page.tsx                       # Landing page
+├── layout.tsx                     # Root layout
+├── auth/
+│   ├── callback/                 # OAuth callback handler
+│   └── reset-password/           # Password reset page
+├── dashboard/
+│   └── page.tsx                  # User dashboard
+├── wizard/
+│   └── page.tsx                  # 9-step plan generator
+├── plan/
+│   ├── view/                     # Plan overview
+│   ├── ejercicios/               # Workout plan viewer
+│   ├── alimentacion/             # Meal plan viewer
+│   └── download/                 # PDF export
+├── payment/
+│   ├── success/                  # Payment success page
+│   ├── pending/                  # Payment pending page
+│   └── failure/                  # Payment failure page
+├── pricing/
+│   └── page.tsx                  # Pricing page
+├── settings/
+│   └── page.tsx                  # User settings
+├── videos/
+│   └── page.tsx                  # Video tutorials
+└── api/
+    └── payment/
+        └── mercadopago/
+            └── create-preference/  # MercadoPago API route
+```
+
+### Features Directory (`src/features/`)
+
+Feature-based modules that encapsulate related functionality:
+
+```
+src/features/
+├── auth/                    # Authentication
+│   ├── components/         # Login, Register, AuthModal
+│   ├── context/           # AuthContext and provider
+│   └── index.ts           # Feature exports
+├── dashboard/              # User dashboard
+│   ├── components/        # QuickActions, SubscriptionCard, etc.
+│   ├── data/             # Video tutorials data
+│   └── index.ts
+├── wizard/                 # 9-step plan generator
+│   ├── components/        # Step components, navigation
+│   ├── store/            # Zustand store for wizard state
+│   ├── data/             # Exercise/meal templates
+│   ├── types/            # TypeScript types
+│   ├── utils/            # Helper functions
+│   └── __tests__/        # Unit tests
+├── workout-plan/           # Workout plan display
+│   ├── components/        # Exercise cards, routine display
+│   ├── data/             # Workout data
+│   ├── types/            # Plan types
+│   └── __tests__/
+├── meal-plan/              # Meal plan display
+│   ├── components/        # Meal cards, nutrition info
+│   ├── data/             # Meal data
+│   ├── types/            # Meal types
+│   └── __tests__/
+├── payment/                # Payment integration
+│   ├── components/        # CheckoutModal, payment forms
+│   ├── utils/            # Payment helpers
+│   └── __tests__/
+├── subscription/           # Subscription management
+│   ├── hooks/            # useSubscription hook
+│   ├── services/         # API service layer
+│   ├── types/            # Subscription types
+│   └── __tests__/
+├── plans/                  # Plan viewer and tracking
+│   ├── components/        # PlanViewer component
+│   ├── hooks/            # Plan hooks
+│   ├── services/         # Plan services
+│   └── __tests__/
+└── landing/                # Landing page sections
+    ├── components/        # Hero, Features, FAQ, etc.
+    ├── sections/          # Composed sections
+    ├── data/             # Transformations, testimonials
+    └── __tests__/
+```
+
+### Shared Directory (`src/shared/`)
+
+Reusable components and utilities:
+
+```
+src/shared/
+├── components/
+│   └── ui/               # Reusable UI components (Button, Card, etc.)
+├── lib/
+│   └── supabase/        # Supabase client configuration
+└── utils/               # Common utility functions
+```
+
+### Library Directory (`src/lib/`)
+
+Core library integrations:
+
+```
+src/lib/
+└── supabase/
+    ├── client.ts         # Browser client
+    └── server.ts         # Server-side client
+```
+
+### Test Directory (`src/test/`)
+
+Testing utilities and setup:
+
+```
+src/test/
+├── setup.ts             # Vitest setup file
+└── mocks/
+    └── supabase.ts      # Supabase mocks for testing
+```
+
+### Remotion Directory (`src/remotion/`)
+
+Video generation for marketing materials:
+
+```
+src/remotion/
+├── index.ts
+├── components/          # Video components
+├── compositions/        # Video compositions
+└── utils/              # Video utilities
+```
+
+## Feature Module Pattern
+
+Each feature follows a consistent structure:
+
+```
+feature-name/
+├── components/          # React components
+├── hooks/              # Custom React hooks (optional)
+├── services/           # API/business logic (optional)
+├── store/              # Zustand stores (optional)
+├── types/              # TypeScript types (optional)
+├── data/               # Static data (optional)
+├── utils/              # Helper functions (optional)
+├── __tests__/          # Test files
+└── index.ts            # Public API exports
+```
+
+### Key Principles
+
+1. **Colocation**: Keep related code together
+2. **Explicit exports**: Use `index.ts` to define public API
+3. **Type safety**: TypeScript types in dedicated files
+4. **Testability**: Tests alongside feature code
+5. **Separation of concerns**: Components, logic, and data are separated
+
+## Database Tables
+
+Key Supabase tables (see `/supabase/migrations/`):
+
+- `profiles` - User profiles with subscription status
+- `subscriptions` - Active subscriptions
+- `wizard_data` - Wizard form data
+- `user_plans` - Generated fitness plans
+- `webhook_logs` - MercadoPago webhook logs
+- `subscription_audit_log` - Subscription changes audit
+
+## External Services
+
+### Cloudflare Worker
+
+Handles MercadoPago webhooks:
+
+- **URL**: https://mercadopago-jcv.fagal142010.workers.dev
+- **Location**: `/cloudflare-worker/`
+- **Deploy**: `cd cloudflare-worker && wrangler deploy`
+
+## Key Documents
+
+- `/docs/PRD-subscription-system.md` - Subscription system PRD
+- `/openspec/` - Feature specifications
+- `/CLAUDE.md` - Development rules and guidelines
+- `/supabase/migrations/` - Database schema
+
+## Environment Configuration
+
+Required environment variables:
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
+# MercadoPago
+NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY=
+MERCADOPAGO_ACCESS_TOKEN=
+
+# URLs
+NEXT_PUBLIC_SITE_URL=
+```
+
+## Navigation Flow
+
+1. **Landing** (`/`) → Introduce product
+2. **Pricing** (`/pricing`) → Show plans
+3. **Auth** → Login/register
+4. **Wizard** (`/wizard`) → Generate personalized plan
+5. **Payment** → MercadoPago checkout
+6. **Dashboard** (`/dashboard`) → Access plans
+7. **Plan Views** (`/plan/*`) → View workout/meal plans
+
+## Build Output
+
+The project builds as a static export for Cloudflare Pages:
+
+```bash
+npm run build  # Creates .next/ and out/ directories
+```

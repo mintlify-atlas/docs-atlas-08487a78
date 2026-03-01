@@ -1,0 +1,506 @@
+---
+title: "Git Workflow"
+description: "Git branch flow, commit conventions, and contribution process for JCV Fitness"
+---
+
+JCV Fitness follows a structured Git workflow to maintain code quality and enable safe deployments. **All code must build and pass tests before committing.**
+
+## Branch Strategy
+
+We use a three-tier branch strategy:
+
+```
+main (production) <-- PR only, protected
+  |
+  staging (pre-prod) <-- primary development, auto-deploys
+  |
+  feature/* (optional) <-- for large features
+```
+
+### Branch Descriptions
+
+#### `main` - Production Branch
+
+- **Protected**: Cannot push directly
+- **Deployment**: Production site at https://jcv24fitness.com
+- **Updates**: Only via Pull Request from `staging`
+- **Status**: Should always be stable and deployable
+
+#### `staging` - Development Branch
+
+- **Primary branch**: Most work happens here
+- **Deployment**: Auto-deploys to Cloudflare Pages staging environment
+- **Testing**: Integration and manual testing environment
+- **Updates**: Direct pushes allowed after build/test checks
+
+#### `feature/*` - Feature Branches
+
+- **Optional**: For large features that need isolation
+- **Naming**: `feature/feature-name` (e.g., `feature/pdf-export`)
+- **Merge target**: Always merge to `staging` first, never to `main`
+- **Cleanup**: Delete after merging
+
+## Development Workflow
+
+### Standard Workflow (staging)
+
+For most changes, work directly on `staging`:
+
+```bash
+# 1. Ensure you're on staging
+git checkout staging
+git pull origin staging
+
+# 2. Make your changes
+# ... edit files ...
+
+# 3. Build and test (REQUIRED)
+npm run build && npm test
+
+# 4. Stage specific files (no git add .)
+git add src/features/payment/components/CheckoutModal.tsx
+git add src/features/payment/__tests__/checkout.test.tsx
+
+# 5. Commit with conventional commits
+git commit -m "feat(payment): add checkout modal component"
+
+# 6. Push to staging
+git push origin staging
+```
+
+### Feature Branch Workflow
+
+For large features requiring isolation:
+
+```bash
+# 1. Create feature branch from staging
+git checkout staging
+git pull origin staging
+git checkout -b feature/subscription-renewal
+
+# 2. Make changes
+# ... develop feature ...
+
+# 3. Build and test
+npm run build && npm test
+
+# 4. Commit changes
+git add <files>
+git commit -m "feat(subscription): add auto-renewal logic"
+
+# 5. Push feature branch
+git push origin feature/subscription-renewal
+
+# 6. Merge to staging (not main!)
+git checkout staging
+git pull origin staging
+git merge feature/subscription-renewal
+git push origin staging
+
+# 7. Delete feature branch
+git branch -d feature/subscription-renewal
+git push origin --delete feature/subscription-renewal
+```
+
+## Pre-commit Checklist
+
+**CRITICAL**: Always complete before committing:
+
+```bash
+# Build check
+npm run build
+# ✓ Must succeed with no errors
+
+# Test check
+npm test
+# ✓ All tests must pass
+
+# Type check (optional but recommended)
+npm run type-check
+# ✓ No TypeScript errors
+
+# Lint check (optional)
+npm run lint
+# ✓ No linting errors
+```
+
+Checkbox version:
+
+- [ ] `npm run build` passes
+- [ ] `npm test` passes
+- [ ] No TypeScript errors
+- [ ] Exports are correct (check `index.ts` files)
+- [ ] New components exported from feature index
+
+## Commit Convention
+
+We use **Conventional Commits** for clear commit history:
+
+### Format
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+### Types
+
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `refactor`: Code refactoring (no functional changes)
+- `test`: Adding or updating tests
+- `style`: Code style changes (formatting, whitespace)
+- `perf`: Performance improvements
+- `chore`: Build process, dependencies, tooling
+- `ci`: CI/CD configuration changes
+
+### Scopes
+
+Common scopes matching features:
+
+- `auth` - Authentication
+- `wizard` - Plan generator wizard
+- `payment` - Payment integration
+- `subscription` - Subscription management
+- `dashboard` - User dashboard
+- `workout` - Workout plan feature
+- `meal` - Meal plan feature
+- `landing` - Landing page
+- `settings` - User settings
+
+### Examples
+
+#### Good Commits
+
+```bash
+git commit -m "feat(wizard): add exercise selection step"
+git commit -m "fix(auth): resolve login redirect loop"
+git commit -m "docs(readme): update installation instructions"
+git commit -m "refactor(payment): extract checkout logic to service"
+git commit -m "test(subscription): add tests for renewal flow"
+```
+
+#### Bad Commits
+
+```bash
+git commit -m "update stuff"  # ❌ Too vague
+git commit -m "Fixed bug"     # ❌ No scope, not descriptive
+git commit -m "WIP"           # ❌ Work in progress should not be committed
+```
+
+### Multi-line Commits
+
+For complex changes:
+
+```bash
+git commit -m "feat(wizard): add personalized meal plan generation
+
+- Integrate calorie calculation based on user metrics
+- Add meal template selection logic
+- Include dietary restrictions support
+- Update wizard store with meal plan state
+
+Closes #42"
+```
+
+## Creating Pull Requests
+
+### Staging to Main (Production Deploy)
+
+When ready to deploy to production:
+
+```bash
+# 1. Ensure staging is stable
+git checkout staging
+git pull origin staging
+npm run build && npm test
+
+# 2. Create PR using GitHub CLI
+gh pr create --base main --head staging --title "Release: [feature summary]" --body "$(cat <<'EOF'
+## Summary
+- New feature: Subscription auto-renewal
+- Bug fix: Payment webhook handling
+- Performance: Optimized plan generation
+
+## Testing
+- [ ] All tests pass
+- [ ] Manual testing completed on staging
+- [ ] Payment flow verified
+- [ ] No console errors
+
+## Deployment Notes
+- Requires environment variable: `RENEWAL_ENABLED=true`
+EOF
+)"
+
+# 3. Request review and merge
+```
+
+### PR Template
+
+```markdown
+## Summary
+
+- Brief description of changes
+- Why these changes were made
+
+## Changes
+
+- List of key changes
+- New features added
+- Bugs fixed
+
+## Testing
+
+- [ ] Unit tests pass
+- [ ] Integration tests pass
+- [ ] Manual testing completed
+- [ ] Tested on staging environment
+
+## Screenshots (if applicable)
+
+[Add screenshots here]
+
+## Deployment Notes
+
+- Any environment variables needed
+- Database migrations required
+- Breaking changes
+```
+
+## Critical Rules
+
+### 🚫 NEVER Do This
+
+1. **Never push directly to main**
+
+   ```bash
+   git push origin main  # ❌ FORBIDDEN
+   ```
+
+2. **Never commit without building and testing**
+
+   ```bash
+   git commit -m "fix: quick fix"  # ❌ Did you run build/test?
+   ```
+
+3. **Never use `git add .` blindly**
+
+   ```bash
+   git add .  # ❌ Stage specific files instead
+   ```
+
+4. **Never commit broken code**
+
+   ```bash
+   # ❌ If this fails, don't commit
+   npm run build && npm test
+   ```
+
+5. **Never skip hooks** (unless explicitly needed)
+   ```bash
+   git commit --no-verify  # ❌ Don't skip validation
+   ```
+
+### ✅ Always Do This
+
+1. **Build and test before commit**
+
+   ```bash
+   npm run build && npm test  # ✅ Always
+   ```
+
+2. **Stage specific files**
+
+   ```bash
+   git add src/features/payment/components/CheckoutModal.tsx  # ✅
+   ```
+
+3. **Write meaningful commit messages**
+
+   ```bash
+   git commit -m "feat(payment): add MercadoPago checkout modal"  # ✅
+   ```
+
+4. **Pull before push**
+
+   ```bash
+   git pull origin staging  # ✅ Avoid conflicts
+   git push origin staging
+   ```
+
+5. **Keep commits atomic**
+   - One logical change per commit
+   - Related changes together
+
+## Common Commands
+
+### Daily Development
+
+```bash
+# Start development
+git checkout staging
+git pull origin staging
+npm run dev
+
+# Save progress
+npm run build && npm test
+git add <files>
+git commit -m "feat(scope): description"
+git push origin staging
+```
+
+### Fixing Mistakes
+
+```bash
+# Undo last commit (keep changes)
+git reset --soft HEAD~1
+
+# Undo last commit (discard changes)
+git reset --hard HEAD~1
+
+# Amend last commit message
+git commit --amend -m "new message"
+
+# Unstage files
+git reset HEAD <file>
+
+# Discard local changes
+git checkout -- <file>
+```
+
+### Sync with Remote
+
+```bash
+# Update local staging
+git checkout staging
+git pull origin staging
+
+# Update local main
+git checkout main
+git pull origin main
+
+# Rebase feature branch on staging
+git checkout feature/my-feature
+git rebase staging
+```
+
+## Handling Conflicts
+
+If you encounter merge conflicts:
+
+```bash
+# 1. Pull latest changes
+git pull origin staging
+
+# 2. Resolve conflicts in files
+# Look for <<<<<<< HEAD markers
+# Edit files to resolve
+
+# 3. Stage resolved files
+git add <resolved-files>
+
+# 4. Complete merge
+git commit -m "merge: resolve conflicts with staging"
+
+# 5. Push
+git push origin staging
+```
+
+## Cloudflare Deployment
+
+### Staging Deployment
+
+Automatic on push to `staging`:
+
+```bash
+git push origin staging
+# → Auto-deploys to staging.jcv24fitness.pages.dev
+```
+
+### Production Deployment
+
+Manual via PR merge:
+
+```bash
+# 1. Create PR: staging → main
+gh pr create --base main --head staging
+
+# 2. Review and merge PR
+# → Auto-deploys to jcv24fitness.com
+```
+
+### Worker Deployment
+
+MercadoPago webhook worker:
+
+```bash
+cd cloudflare-worker
+wrangler deploy
+# → Deploys to mercadopago-jcv.fagal142010.workers.dev
+```
+
+## Code Review Guidelines
+
+### For Authors
+
+- Keep PRs focused and reasonably sized
+- Write clear PR descriptions
+- Ensure all tests pass
+- Test on staging before requesting review
+- Respond to feedback promptly
+
+### For Reviewers
+
+- Check that build and tests pass
+- Verify commit messages follow convention
+- Look for potential bugs or edge cases
+- Ensure code follows project patterns
+- Test changes locally if needed
+- Be constructive and specific in feedback
+
+## Emergency Hotfixes
+
+For critical production bugs:
+
+```bash
+# 1. Create hotfix branch from main
+git checkout main
+git pull origin main
+git checkout -b hotfix/critical-payment-bug
+
+# 2. Fix the issue
+# ... make minimal changes ...
+
+# 3. Test thoroughly
+npm run build && npm test
+
+# 4. Commit
+git add <files>
+git commit -m "fix(payment): resolve critical checkout failure"
+
+# 5. Create PR to main
+gh pr create --base main --head hotfix/critical-payment-bug
+
+# 6. After merge, sync to staging
+git checkout staging
+git merge main
+git push origin staging
+
+# 7. Delete hotfix branch
+git branch -d hotfix/critical-payment-bug
+```
+
+## Tips for Success
+
+1. **Commit often**: Small, focused commits are easier to review and revert
+2. **Pull frequently**: Stay in sync with the team
+3. **Test locally**: Don't rely on CI to catch issues
+4. **Read error messages**: Build and test failures tell you what's wrong
+5. **Ask for help**: If stuck, ask before pushing broken code
+6. **Document why**: Commit messages should explain why, not just what
+7. **Keep it simple**: Don't over-complicate the workflow
